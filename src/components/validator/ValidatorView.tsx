@@ -82,11 +82,13 @@ function Field({
   placeholder: string;
   textarea?: boolean;
 }) {
+  const id = `validator-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   return (
     <div>
-      <label className="text-sm font-medium block mb-1">{label}</label>
+      <label htmlFor={id} className="text-sm font-medium block mb-1">{label}</label>
       {textarea ? (
         <textarea
+          id={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
@@ -95,6 +97,7 @@ function Field({
         />
       ) : (
         <input
+          id={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}

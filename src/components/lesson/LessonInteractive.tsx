@@ -142,8 +142,9 @@ export function LessonInteractive({ lesson }: { lesson: Lesson }) {
       <LessonSection icon="💭" title="DAILY REFLECTION">
         <div className="card p-5 space-y-3">
           <div>
-            <label className="text-sm font-medium block mb-1">What did I learn today?</label>
+            <label htmlFor={`reflection-learned-${lesson.id}`} className="text-sm font-medium block mb-1">What did I learn today?</label>
             <textarea
+              id={`reflection-learned-${lesson.id}`}
               value={learned}
               onChange={(e) => setLearned(e.target.value)}
               rows={2}
@@ -151,8 +152,9 @@ export function LessonInteractive({ lesson }: { lesson: Lesson }) {
             />
           </div>
           <div>
-            <label className="text-sm font-medium block mb-1">Where can I apply this in a real business?</label>
+            <label htmlFor={`reflection-application-${lesson.id}`} className="text-sm font-medium block mb-1">Where can I apply this in a real business?</label>
             <textarea
+              id={`reflection-application-${lesson.id}`}
               value={application}
               onChange={(e) => setApplication(e.target.value)}
               rows={2}

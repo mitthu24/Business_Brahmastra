@@ -70,9 +70,10 @@ export function WizardView() {
 
       <div className="card p-6 max-w-2xl">
         <div className="text-xs text-muted mb-1">STEP {step.stepNumber} OF {wizardSteps.length}</div>
-        <h2 className="text-xl font-semibold mb-3">{step.title}</h2>
-        <p className="text-sm text-muted mb-4">{step.prompt}</p>
+        <h2 id={`wizard-step-${step.id}`} className="text-xl font-semibold mb-3">{step.title}</h2>
+        <p id={`wizard-prompt-${step.id}`} className="text-sm text-muted mb-4">{step.prompt}</p>
         <textarea
+          aria-labelledby={`wizard-step-${step.id} wizard-prompt-${step.id}`}
           value={answers[step.id] ?? ""}
           onChange={(e) => update(e.target.value)}
           rows={6}

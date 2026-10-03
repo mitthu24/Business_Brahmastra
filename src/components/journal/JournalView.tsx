@@ -35,21 +35,26 @@ export function JournalView() {
     <div className="grid lg:grid-cols-2 gap-8">
       <div>
         <div className="card p-5 mb-6">
-          <label className="text-sm font-medium block mb-2">Category</label>
-          <div className="flex flex-wrap gap-2 mb-4">
-            {journalCategories.map((c) => (
-              <button
-                key={c.label}
-                onClick={() => setCategory(c.label)}
-                className={`text-xs rounded-full px-3 py-1.5 transition-colors flex items-center gap-1 ${
-                  category === c.label ? "bg-primary text-primary-foreground" : "border border-border text-muted hover:text-foreground"
-                }`}
-              >
-                <span aria-hidden>{c.icon}</span> {c.label}
-              </button>
-            ))}
-          </div>
+          <fieldset className="mb-4">
+            <legend className="text-sm font-medium mb-2">Category</legend>
+            <div className="flex flex-wrap gap-2">
+              {journalCategories.map((c) => (
+                <button
+                  key={c.label}
+                  onClick={() => setCategory(c.label)}
+                  aria-pressed={category === c.label}
+                  className={`text-xs rounded-full px-3 py-1.5 transition-colors flex items-center gap-1 ${
+                    category === c.label ? "bg-primary text-primary-foreground" : "border border-border text-muted hover:text-foreground"
+                  }`}
+                >
+                  <span aria-hidden>{c.icon}</span> {c.label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <label htmlFor="journal-entry-text" className="sr-only">Journal entry</label>
           <textarea
+            id="journal-entry-text"
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Write down an idea, observation, or lesson..."

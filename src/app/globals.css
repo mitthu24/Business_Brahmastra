@@ -45,6 +45,10 @@ body {
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: 1rem;
+  /* Defensive: long unbroken strings (e.g. "A→B→C" style chains with no spaces)
+     must wrap instead of forcing the card wider than its container on narrow screens. */
+  overflow-wrap: break-word;
+  min-width: 0;
 }
 
 .scrollbar-thin::-webkit-scrollbar {

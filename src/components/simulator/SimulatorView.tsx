@@ -61,8 +61,9 @@ export function SimulatorView() {
           <div className="space-y-3">
             {(Object.keys(fieldLabels) as Array<keyof SimulatorInputs>).map((key) => (
               <div key={key}>
-                <label className="text-sm font-medium block mb-1">{fieldLabels[key]}</label>
+                <label htmlFor={`sim-${key}`} className="text-sm font-medium block mb-1">{fieldLabels[key]}</label>
                 <input
+                  id={`sim-${key}`}
                   type="number"
                   value={inputs[key]}
                   onChange={(e) => setInputs((prev) => ({ ...prev, [key]: Number(e.target.value) || 0 }))}

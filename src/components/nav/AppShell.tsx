@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { navItems } from "@/lib/nav-items";
@@ -34,6 +34,29 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  function closeDrawer() {
+    setDrawerOpen(false);
+    // Return focus to the trigger so keyboard users land back where they started, never trapped.
+    menuButtonRef.current?.focus();
+  }
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    // Move focus into the drawer when it opens.
+    closeButtonRef.current?.focus();
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeDrawer();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [drawerOpen]);
 
   return (
     <div className="min-h-screen flex">
@@ -55,25 +78,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Mobile drawer */}
       {drawerOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setDrawerOpen(false)} />
-          <aside className="absolute left-0 top-0 h-full w-72 bg-bg-elevated border-r border-border px-4 py-6 overflow-y-auto">
+          <div className="absolute inset-0 bg-black/60" onClick={closeDrawer} aria-hidden="true" />
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation menu"
+            className="absolute left-0 top-0 h-full w-72 bg-bg-elevated border-r border-border px-4 py-6 overflow-y-auto"
+          >
             <div className="flex items-center justify-between mb-6 px-2">
-              <Link href="/" className="flex items-center gap-2" onClick={() => setDrawerOpen(false)}>
+              <Link href="/" className="flex items-center gap-2" onClick={closeDrawer}>
                 <span className="text-2xl" aria-hidden>🎓</span>
                 <span className="font-semibold leading-tight">90-Day Business School</span>
               </Link>
-              <button onClick={() => setDrawerOpen(false)} aria-label="Close menu">
+              <button ref={closeButtonRef} onClick={closeDrawer} aria-label="Close menu">
                 <Icon name="X" size={20} />
               </button>
             </div>
-            <NavLinks onNavigate={() => setDrawerOpen(false)} />
+            <NavLinks onNavigate={closeDrawer} />
           </aside>
         </div>
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
         <header className="flex items-center gap-3 border-b border-border px-4 py-3 lg:px-6 sticky top-0 bg-bg/95 backdrop-blur z-30 print:hidden">
-          <button className="lg:hidden" onClick={() => setDrawerOpen(true)} aria-label="Open menu">
+          <button ref={menuButtonRef} className="lg:hidden" onClick={() => setDrawerOpen(true)} aria-label="Open menu">
             <Icon name="Menu" size={22} />
           </button>
           <div className="flex-1">
