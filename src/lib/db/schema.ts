@@ -228,3 +228,76 @@ export const auditLogs = pgTable("audit_logs", {
   index("audit_logs_entity_idx").on(t.entityType, t.entityId),
   index("audit_logs_created_at_idx").on(t.createdAt),
 ]);
+
+/**
+ * Reference-content CMS (Phase 5.3 slice 2, docs/PHASE-5.3.md "Reference content CMS"). Three
+ * tables - glossary, formula library, case studies - each carrying a founder-managed `status` so
+ * draft/archived rows are never learner-visible. The primary key is the SAME stable slug/id the
+ * existing hardcoded content in src/lib/content/{glossary,formulas,case-studies}.ts already uses
+ * (e.g. "revenue", "profit", "zerodha") - not a generated UUID - so a future cutover of the public
+ * routes to read from these tables needs no reference rewriting anywhere. Array fields are
+ * JSON-encoded text, matching the auditLogs.metadata convention above (this schema has no jsonb
+ * column type in use elsewhere, and PGlite/postgres.js parity is easier to keep with plain text).
+ */
+export const contentStatusEnum = pgEnum("content_status", ["draft", "published", "archived"]);
+
+export const glossaryEntries = pgTable("glossary_entries", {
+  id: text("id").primaryKey(), // the existing stable slug, e.g. "revenue"
+  term: text("term").notNull(),
+  slug: text("slug").notNull(),
+  definition: text("definition").notNull(),
+  example: text("example").notNull(),
+  formula: text("formula"),
+  mnemonic: text("mnemonic"),
+  relatedTerms: text("related_terms").notNull().default("[]"), // JSON-encoded string[]
+  status: contentStatusEnum("status").notNull().default("draft"),
+  createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+  updatedBy: text("updated_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("glossary_entries_slug_unique").on(t.slug),
+  index("glossary_entries_status_idx").on(t.status),
+]);
+
+export const formulaEntries = pgTable("formula_entries", {
+  id: text("id").primaryKey(), // the existing stable id, e.g. "profit"
+  name: text("name").notNull(),
+  category: text("category").notNull(),
+  expression: text("expression").notNull(),
+  explanation: text("explanation").notNull(),
+  example: text("example").notNull(),
+  status: contentStatusEnum("status").notNull().default("draft"),
+  createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+  updatedBy: text("updated_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("formula_entries_status_idx").on(t.status),
+  index("formula_entries_category_idx").on(t.category),
+]);
+
+export const caseStudyEntries = pgTable("case_study_entries", {
+  id: text("id").primaryKey(), // the existing stable id, e.g. "zerodha"
+  company: text("company").notNull(),
+  category: text("category").notNull(),
+  industry: text("industry").notNull(),
+  factType: text("fact_type").notNull(),
+  problem: text("problem").notNull(),
+  solution: text("solution").notNull(),
+  customer: text("customer").notNull(),
+  businessModel: text("business_model").notNull(),
+  revenueModel: text("revenue_model").notNull(),
+  growth: text("growth").notNull(),
+  competition: text("competition").notNull(),
+  challenges: text("challenges").notNull(),
+  lessons: text("lessons").notNull().default("[]"), // JSON-encoded string[]
+  status: contentStatusEnum("status").notNull().default("draft"),
+  createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+  updatedBy: text("updated_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("case_study_entries_status_idx").on(t.status),
+  index("case_study_entries_category_idx").on(t.category),
+]);

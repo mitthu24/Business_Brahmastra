@@ -11,7 +11,12 @@ export type AuditAction =
   | "PASSWORD_RESET"
   | "ACCESS_GRANTED"
   | "ACCESS_REVOKED"
-  | "TRIAL_EXTENDED";
+  | "TRIAL_EXTENDED"
+  | "CONTENT_CREATED"
+  | "CONTENT_UPDATED"
+  | "CONTENT_PUBLISHED"
+  | "CONTENT_UNPUBLISHED"
+  | "CONTENT_ARCHIVED";
 
 /** Records one founder action. Never pass passwords, hashes, or tokens in `metadata` - see
  * docs/PHASE-5.3.md "Audit logging". Logging failures never block the underlying action (a missed

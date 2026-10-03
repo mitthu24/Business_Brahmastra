@@ -22,6 +22,13 @@
       "when": 1791052120283,
       "tag": "0002_mixed_madelyne_pryor",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791053307866,
+      "tag": "0003_fat_thaddeus_ross",
+      "breakpoints": true
     }
   ]
 }
