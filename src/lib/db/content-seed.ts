@@ -1,4 +1,6 @@
-import "server-only";
+// No "server-only" guard here (unlike content-queries.ts): this module is also imported by
+// scripts/seed-content.ts, a plain tsx/node operator script run outside Next's bundler, where the
+// server-only package's import-time check throws. It is never imported by a client component.
 import type { Database } from "./types";
 import { glossaryEntries, formulaEntries, caseStudyEntries } from "./schema";
 import { glossary } from "@/lib/content/glossary";
