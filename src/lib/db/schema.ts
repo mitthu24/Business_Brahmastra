@@ -205,3 +205,26 @@ export const migrationStatus = pgTable("migration_status", {
   userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
   migratedAt: timestamp("migrated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Append-only founder action log (Phase 5.3, docs/PHASE-5.3.md "Audit logging"). Written by every
+ * founder mutation (user create/update/suspend/reactivate/access-grant/password-reset, and later
+ * content CRUD) - never by learner actions. `founderId` is nullable with ON DELETE SET NULL rather
+ * than CASCADE so a log entry survives even if the founder account is later removed - an audit
+ * trail that disappears when its author is deleted defeats its own purpose. Never stores passwords,
+ * hashes, DATABASE_URL, or session tokens - only entity references and small descriptive metadata.
+ */
+export const auditLogs = pgTable("audit_logs", {
+  id: id(),
+  founderId: text("founder_id").references(() => users.id, { onDelete: "set null" }),
+  action: text("action").notNull(),
+  entityType: text("entity_type").notNull(),
+  entityId: text("entity_id"),
+  metadata: text("metadata"), // JSON-encoded, small descriptive context only - see note above
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("audit_logs_founder_id_idx").on(t.founderId),
+  index("audit_logs_action_idx").on(t.action),
+  index("audit_logs_entity_idx").on(t.entityType, t.entityId),
+  index("audit_logs_created_at_idx").on(t.createdAt),
+]);

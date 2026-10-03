@@ -20,17 +20,20 @@ export async function findUserById(db: Database, userId: string) {
 
 export async function createUser(
   db: Database,
-  input: { email: string; passwordHash: string; name: string }
+  input: { email: string; passwordHash: string; name: string; role?: "user" | "founder" }
 ) {
   return db.transaction(async (tx) => {
     // Trial window is computed from the server clock at the moment of signup, never the browser's
     // - see docs/PHASE-5.md "3-day trial". The column defaults mirror this for safety, but setting
     // it explicitly here means the exact instant is always known and auditable from app code too.
+    // A founder-created account (role: "founder") is exempt from the trial model entirely
+    // (computeAccessStatus always returns ACTIVE for founders) - the trial fields are still set for
+    // schema consistency but are never consulted for that role.
     const trialStartedAt = new Date();
     const trialEndsAt = new Date(trialStartedAt.getTime() + TRIAL_DURATION_MS);
     const [user] = await tx
       .insert(users)
-      .values({ email: input.email, passwordHash: input.passwordHash, trialStartedAt, trialEndsAt })
+      .values({ email: input.email, passwordHash: input.passwordHash, trialStartedAt, trialEndsAt, role: input.role ?? "user" })
       .returning();
     const initials = initialsFromName(input.name);
     await tx.insert(userProfiles).values({ userId: user.id, name: input.name, avatarInitials: initials });

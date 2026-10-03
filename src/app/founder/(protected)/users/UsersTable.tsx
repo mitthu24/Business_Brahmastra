@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import type { FounderUserRow } from "@/lib/db/founder-queries";
 import { activateUserAction, suspendUserAction, reactivateUserAction } from "../../actions";
 
@@ -93,7 +94,11 @@ export function UsersTable({ users }: { users: FounderUserRow[] }) {
           <tbody>
             {users.map((u) => (
               <tr key={u.id} className="border-b border-border/50 last:border-0 align-top">
-                <td className="py-2.5 px-4">{u.name ?? "—"}</td>
+                <td className="py-2.5 px-4">
+                  <Link href={`/founder/users/${u.id}`} className="hover:underline">
+                    {u.name ?? "—"}
+                  </Link>
+                </td>
                 <td className="py-2.5 px-4 text-muted">{u.email}</td>
                 <td className="py-2.5 px-4">
                   <StatusPill status={u.role === "founder" ? "FOUNDER" : u.status} />

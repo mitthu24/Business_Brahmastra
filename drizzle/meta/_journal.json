@@ -15,6 +15,13 @@
       "when": 1791044145184,
       "tag": "0001_simple_korvac",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791052120283,
+      "tag": "0002_mixed_madelyne_pryor",
+      "breakpoints": true
     }
   ]
 }

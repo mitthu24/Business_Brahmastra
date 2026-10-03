@@ -84,7 +84,7 @@ describe("founder user management", () => {
     await suspendUser(db, suspended.id);
     await createUser(db, { email: "f3@example.com", passwordHash: "x", name: "F3" }); // stays TRIAL
 
-    const stats = await getFounderDashboardStats(db);
+    const stats = await getFounderDashboardStats(db, 90);
     expect(stats.totalUsers).toBe(3);
     expect(stats.activeUsers).toBe(1);
     expect(stats.suspendedUsers).toBe(1);
