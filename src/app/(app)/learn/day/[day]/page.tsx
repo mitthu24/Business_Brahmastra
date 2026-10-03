@@ -3,6 +3,13 @@ import { notFound } from "next/navigation";
 import { allLessons, getLessonByDay, TOTAL_DAYS } from "@/lib/content/lessons";
 import { getPhaseForDay } from "@/lib/content/phases";
 import { LessonInteractive } from "@/components/lesson/LessonInteractive";
+import { LessonSection } from "@/components/ui/LessonSection";
+import { FormulaCard } from "@/components/ui/FormulaCard";
+import { MnemonicCard } from "@/components/ui/MnemonicCard";
+import { BusinessExampleCard } from "@/components/ui/BusinessExampleCard";
+import { Callout } from "@/components/ui/Callout";
+import { ProgressBar } from "@/components/ui/ProgressBar";
+import { getLessonDiagram } from "@/lib/lesson-diagrams";
 
 export function generateStaticParams() {
   return allLessons.map((l) => ({ day: String(l.day) }));
@@ -22,6 +29,7 @@ export default async function LessonPage({ params }: { params: Promise<{ day: st
   if (!lesson || !Number.isInteger(dayNum) || dayNum < 1 || dayNum > TOTAL_DAYS) notFound();
 
   const phase = getPhaseForDay(lesson.day);
+  const diagram = getLessonDiagram(lesson.day);
 
   return (
     <article className="space-y-8 max-w-3xl">
@@ -31,63 +39,50 @@ export default async function LessonPage({ params }: { params: Promise<{ day: st
           <span>·</span>
           <span>Day {lesson.day} of {TOTAL_DAYS}</span>
         </div>
-        <h1 className="text-3xl font-bold">{lesson.title}</h1>
+        <h1 className="text-3xl font-bold mb-3">{lesson.title}</h1>
+        <ProgressBar percent={(lesson.day / TOTAL_DAYS) * 100} size="sm" label={`${Math.round((lesson.day / TOTAL_DAYS) * 100)}% through the 90-day journey`} />
       </header>
 
-      <section>
-        <h2 className="text-sm font-semibold tracking-wide text-muted mb-3">🎯 TODAY&apos;S MISSION</h2>
+      <LessonSection icon="🎯" title="TODAY'S MISSION">
         <div className="card p-5 text-lg">{lesson.objective}</div>
-      </section>
+      </LessonSection>
 
-      <section>
-        <h2 className="text-sm font-semibold tracking-wide text-muted mb-3">🧠 CONCEPT</h2>
+      <LessonSection icon="🧠" title="CORE CONCEPT">
         <div className="card p-5 space-y-3">
           <p>{lesson.concept}</p>
           <p className="text-muted text-sm">{lesson.simpleExplanation}</p>
         </div>
-      </section>
+      </LessonSection>
 
-      <section>
-        <h2 className="text-sm font-semibold tracking-wide text-muted mb-3">💡 EASY EXAMPLE</h2>
+      <LessonSection icon="💡" title="EASY ANALOGY">
         <div className="card p-5">{lesson.analogy}</div>
-      </section>
+      </LessonSection>
 
-      <section>
-        <h2 className="text-sm font-semibold tracking-wide text-muted mb-3">🏢 REAL BUSINESS EXAMPLES</h2>
-        <div className="card p-5 space-y-3 text-sm">
-          <p><span className="font-medium">Global: </span>{lesson.businessExample}</p>
-          {lesson.indiaExample && <p><span className="font-medium">India: </span>{lesson.indiaExample}</p>}
-          {lesson.startupExample && <p><span className="font-medium">Startup: </span>{lesson.startupExample}</p>}
+      <LessonSection icon="🏢" title="REAL BUSINESS EXAMPLES">
+        <div className="grid sm:grid-cols-2 gap-3">
+          <BusinessExampleCard label="Global" icon="🌍" text={lesson.businessExample} />
+          {lesson.indiaExample && <BusinessExampleCard label="India" icon="🇮🇳" text={lesson.indiaExample} />}
+          {lesson.startupExample && <BusinessExampleCard label="Startup" icon="🚀" text={lesson.startupExample} />}
         </div>
-      </section>
+      </LessonSection>
+
+      {diagram && <LessonSection icon="📊" title="SEE IT VISUALLY">{diagram}</LessonSection>}
 
       {lesson.formula && (
-        <section>
-          <h2 className="text-sm font-semibold tracking-wide text-muted mb-3">📐 FORMULA</h2>
-          <div className="card p-5 bg-primary/10 border-primary/30">
-            <p className="font-semibold mb-2">{lesson.formula.name}</p>
-            <pre className="whitespace-pre-wrap font-mono text-sm text-primary mb-3">{lesson.formula.expression}</pre>
-            <p className="text-sm text-muted">{lesson.formula.workedExample}</p>
-          </div>
-        </section>
+        <LessonSection icon="📐" title="FORMULA">
+          <FormulaCard name={lesson.formula.name} expression={lesson.formula.expression} example={lesson.formula.workedExample} />
+        </LessonSection>
       )}
 
       {lesson.mnemonic && (
-        <section>
-          <h2 className="text-sm font-semibold tracking-wide text-muted mb-3">🧠 MEMORY TRICK</h2>
-          <div className="card p-5 bg-accent/10 border-accent/30">
-            <p className="font-semibold mb-2">{lesson.mnemonic.label}</p>
-            <ul className="space-y-1 text-sm">
-              {lesson.mnemonic.breakdown.map((b, i) => <li key={i}>{b}</li>)}
-            </ul>
-          </div>
-        </section>
+        <LessonSection icon="🧠" title="MEMORY TRICK">
+          <MnemonicCard label={lesson.mnemonic.label} breakdown={lesson.mnemonic.breakdown} remember={lesson.rememberThis} />
+        </LessonSection>
       )}
 
-      <section>
-        <h2 className="text-sm font-semibold tracking-wide text-muted mb-3">⚠️ COMMON MISTAKE</h2>
-        <div className="card p-5 bg-warning/10 border-warning/30 text-sm">{lesson.commonMistake}</div>
-      </section>
+      <LessonSection icon="⚠️" title="COMMON MISTAKE">
+        <Callout tone="warning">{lesson.commonMistake}</Callout>
+      </LessonSection>
 
       <LessonInteractive lesson={lesson} />
     </article>

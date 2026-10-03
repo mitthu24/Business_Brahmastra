@@ -7,6 +7,10 @@ import { useProgressStore } from "@/lib/progress/store";
 import type { QuizAnswer } from "@/lib/progress/xp";
 import { Icon } from "@/components/nav/Icon";
 import { TOTAL_DAYS } from "@/lib/content/lessons";
+import { LessonSection } from "@/components/ui/LessonSection";
+import { ExerciseCard } from "@/components/ui/ExerciseCard";
+import { CaseStudyCard } from "@/components/ui/CaseStudyCard";
+import { Callout } from "@/components/ui/Callout";
 
 export function LessonInteractive({ lesson }: { lesson: Lesson }) {
   const [exerciseRevealed, setExerciseRevealed] = useState(false);
@@ -58,100 +62,85 @@ export function LessonInteractive({ lesson }: { lesson: Lesson }) {
 
   return (
     <div className="space-y-8">
-      <Section icon="📝" title="PRACTICE">
-        <p className="mb-4">{lesson.exercise.prompt}</p>
-        {!exerciseRevealed ? (
-          <button onClick={revealExercise} className="rounded-lg bg-bg-elevated border border-border px-4 py-2 text-sm font-medium hover:bg-primary/10 transition-colors">
-            Reveal Answer (+25 XP)
-          </button>
-        ) : (
-          <div className="rounded-lg bg-success/10 border border-success/30 p-4 text-sm">
-            <div className="font-medium text-success mb-1">✅ Answer</div>
-            <p>{lesson.exercise.answer}</p>
+      <LessonSection icon="📝" title="PRACTICE">
+        <ExerciseCard prompt={lesson.exercise.prompt} revealed={exerciseRevealed} answer={lesson.exercise.answer} onReveal={revealExercise} />
+      </LessonSection>
+
+      <LessonSection icon="🏪" title="MINI CASE STUDY">
+        <CaseStudyCard text={lesson.caseStudy} read={caseStudyRead} onMarkRead={markCaseStudyRead} />
+      </LessonSection>
+
+      <LessonSection icon="🎤" title="FOUNDER QUESTION">
+        <div className="card p-5 italic">{lesson.founderQuestion}</div>
+      </LessonSection>
+
+      <LessonSection icon="⚡" title="QUICK QUIZ">
+        <div className="card p-5">
+          <div className="space-y-5">
+            {lesson.quiz.map((q, qi) => {
+              const selected = selectedAnswers[q.id];
+              return (
+                <fieldset key={q.id}>
+                  <legend className="font-medium mb-2 text-sm">{qi + 1}. {q.question}</legend>
+                  <div className="space-y-2">
+                    {q.options.map((opt, oi) => {
+                      const isSelected = selected === oi;
+                      const isCorrect = oi === q.correctIndex;
+                      let style = "border-border hover:bg-bg-elevated";
+                      if (quizSubmitted) {
+                        if (isCorrect) style = "border-success bg-success/10";
+                        else if (isSelected) style = "border-danger bg-danger/10";
+                      } else if (isSelected) {
+                        style = "border-primary bg-primary/10";
+                      }
+                      return (
+                        <button
+                          key={oi}
+                          disabled={quizSubmitted}
+                          aria-pressed={isSelected}
+                          onClick={() => setSelectedAnswers((prev) => ({ ...prev, [q.id]: oi }))}
+                          className={`w-full text-left text-sm rounded-lg border px-3 py-2 transition-colors ${style}`}
+                        >
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {quizSubmitted && <p className="text-xs text-muted mt-2">{q.explanation}</p>}
+                </fieldset>
+              );
+            })}
           </div>
-        )}
-      </Section>
 
-      <Section icon="🏪" title="MINI CASE STUDY">
-        <p>{lesson.caseStudy}</p>
-        {!caseStudyRead && (
-          <button onClick={markCaseStudyRead} className="mt-4 rounded-lg bg-bg-elevated border border-border px-4 py-2 text-sm font-medium hover:bg-primary/10 transition-colors">
-            Mark as read (+50 XP)
-          </button>
-        )}
-        {caseStudyRead && <p className="mt-3 text-xs text-success">Case study credited.</p>}
-      </Section>
-
-      <Section icon="🎤" title="FOUNDER QUESTION">
-        <p className="italic">{lesson.founderQuestion}</p>
-      </Section>
-
-      <Section icon="⚡" title="QUICK QUIZ">
-        <div className="space-y-5">
-          {lesson.quiz.map((q, qi) => {
-            const selected = selectedAnswers[q.id];
-            return (
-              <div key={q.id}>
-                <p className="font-medium mb-2 text-sm">{qi + 1}. {q.question}</p>
-                <div className="space-y-2">
-                  {q.options.map((opt, oi) => {
-                    const isSelected = selected === oi;
-                    const isCorrect = oi === q.correctIndex;
-                    let style = "border-border hover:bg-bg-elevated";
-                    if (quizSubmitted) {
-                      if (isCorrect) style = "border-success bg-success/10";
-                      else if (isSelected) style = "border-danger bg-danger/10";
-                    } else if (isSelected) {
-                      style = "border-primary bg-primary/10";
-                    }
-                    return (
-                      <button
-                        key={oi}
-                        disabled={quizSubmitted}
-                        aria-pressed={isSelected}
-                        onClick={() => setSelectedAnswers((prev) => ({ ...prev, [q.id]: oi }))}
-                        className={`w-full text-left text-sm rounded-lg border px-3 py-2 transition-colors ${style}`}
-                      >
-                        {opt}
-                      </button>
-                    );
-                  })}
-                </div>
-                {quizSubmitted && (
-                  <p className="text-xs text-muted mt-2">{q.explanation}</p>
-                )}
-              </div>
-            );
-          })}
+          {!quizSubmitted ? (
+            <button
+              onClick={handleSubmitQuiz}
+              disabled={!allQuestionsAnswered}
+              className="mt-5 rounded-lg bg-primary text-primary-foreground px-5 py-2.5 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+            >
+              Submit Quiz {alreadyAttemptedQuiz ? "" : "(+25 XP)"}
+            </button>
+          ) : (
+            <p className="mt-5 text-sm font-medium">
+              You got {correctCount}/{lesson.quiz.length} correct ({Math.round((correctCount / lesson.quiz.length) * 100)}%).
+            </p>
+          )}
         </div>
+      </LessonSection>
 
-        {!quizSubmitted ? (
-          <button
-            onClick={handleSubmitQuiz}
-            disabled={!allQuestionsAnswered}
-            className="mt-5 rounded-lg bg-primary text-primary-foreground px-5 py-2.5 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
-          >
-            Submit Quiz {alreadyAttemptedQuiz ? "" : "(+25 XP)"}
-          </button>
-        ) : (
-          <p className="mt-5 text-sm font-medium">
-            You got {correctCount}/{lesson.quiz.length} correct ({Math.round((correctCount / lesson.quiz.length) * 100)}%).
-          </p>
-        )}
-      </Section>
-
-      <Section icon="📌" title="REMEMBER">
-        <ul className="list-disc list-inside space-y-1.5 text-sm">
-          {lesson.takeaways.map((t, i) => <li key={i}>{t}</li>)}
-        </ul>
-        <div className="mt-4 rounded-lg bg-accent/10 border border-accent/30 p-4 text-sm">
-          <span className="font-medium text-accent">🧠 Remember This: </span>
-          {lesson.rememberThis}
+      <LessonSection icon="📌" title="REMEMBER THIS">
+        <div className="card p-5">
+          <ul className="list-disc list-inside space-y-1.5 text-sm mb-4">
+            {lesson.takeaways.map((t, i) => <li key={i}>{t}</li>)}
+          </ul>
+          <Callout tone="accent" icon="🧠" title="Remember This">
+            {lesson.rememberThis}
+          </Callout>
         </div>
-      </Section>
+      </LessonSection>
 
-      <Section icon="💭" title="DAILY REFLECTION">
-        <div className="space-y-3">
+      <LessonSection icon="💭" title="DAILY REFLECTION">
+        <div className="card p-5 space-y-3">
           <div>
             <label className="text-sm font-medium block mb-1">What did I learn today?</label>
             <textarea
@@ -175,7 +164,7 @@ export function LessonInteractive({ lesson }: { lesson: Lesson }) {
           </button>
           {reflectionSaved && <p className="text-xs text-success">Saved to your Founder Journal.</p>}
         </div>
-      </Section>
+      </LessonSection>
 
       <div className="card p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
@@ -200,16 +189,5 @@ export function LessonInteractive({ lesson }: { lesson: Lesson }) {
         ) : <span />}
       </div>
     </div>
-  );
-}
-
-function Section({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <h2 className="text-sm font-semibold tracking-wide text-muted mb-3 flex items-center gap-2">
-        <span aria-hidden>{icon}</span> {title}
-      </h2>
-      <div className="card p-5">{children}</div>
-    </section>
   );
 }

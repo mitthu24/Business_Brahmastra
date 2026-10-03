@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { phases } from "@/lib/content/phases";
 import { useProgressStore } from "@/lib/progress/store";
+import { PhaseCard } from "@/components/ui/PhaseCard";
 import { Icon } from "@/components/nav/Icon";
 
 export function RoadmapView() {
@@ -10,60 +10,58 @@ export function RoadmapView() {
   const completedSet = new Set(completedDays);
 
   return (
-    <div className="space-y-4">
-      {phases.map((phase, idx) => {
-        const totalDays = phase.endDay - phase.startDay + 1;
-        const completedInPhase = Array.from({ length: totalDays }, (_, i) => phase.startDay + i).filter((d) =>
-          completedSet.has(d)
-        ).length;
-        const progressPercent = Math.round((completedInPhase / totalDays) * 100);
-        const previousPhase = phases[idx - 1];
-        const previousComplete = !previousPhase
-          ? true
-          : Array.from({ length: previousPhase.endDay - previousPhase.startDay + 1 }, (_, i) => previousPhase.startDay + i).every((d) => completedSet.has(d));
-        const unlocked = idx === 0 || previousComplete || completedInPhase > 0;
-        const isComplete = progressPercent === 100;
+    <div className="relative max-w-3xl mx-auto">
+      {/* connecting rail */}
+      <div className="absolute left-6 top-6 bottom-6 w-0.5 bg-border hidden sm:block" aria-hidden />
 
-        return (
-          <div key={phase.id} className="card p-5 flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex items-center gap-4 flex-1 min-w-0">
-              <div
-                className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center font-bold ${
-                  isComplete ? "bg-success/20 text-success" : unlocked ? "bg-primary/15 text-primary" : "bg-bg-elevated text-muted"
-                }`}
-              >
-                {isComplete ? <Icon name="Check" size={20} /> : unlocked ? <Icon name={phase.icon} size={20} /> : <Icon name="Lock" size={16} />}
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-muted">Phase {phase.number}</span>
-                  <h3 className="font-semibold">{phase.title}</h3>
-                </div>
-                <p className="text-sm text-muted mt-0.5">{phase.description}</p>
-                <p className="text-xs text-muted mt-1">Days {phase.startDay}–{phase.endDay}</p>
-              </div>
-            </div>
+      <div className="flex flex-col items-center gap-1 mb-4 sm:ml-0">
+        <div className="w-12 h-12 rounded-full bg-success/20 text-success flex items-center justify-center font-bold">
+          <Icon name="Play" size={18} />
+        </div>
+        <p className="text-xs text-muted">START</p>
+      </div>
 
-            <div className="flex items-center gap-4 sm:w-56 shrink-0">
-              <div className="flex-1">
-                <div className="h-2 rounded-full bg-bg-elevated overflow-hidden">
-                  <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progressPercent}%` }} />
-                </div>
-                <div className="text-xs text-muted mt-1">{completedInPhase}/{totalDays} days · {progressPercent}%</div>
+      <div className="space-y-4">
+        {phases.map((phase, idx) => {
+          const totalDays = phase.endDay - phase.startDay + 1;
+          const completedInPhase = Array.from({ length: totalDays }, (_, i) => phase.startDay + i).filter((d) =>
+            completedSet.has(d)
+          ).length;
+          const previousPhase = phases[idx - 1];
+          const previousComplete = !previousPhase
+            ? true
+            : Array.from({ length: previousPhase.endDay - previousPhase.startDay + 1 }, (_, i) => previousPhase.startDay + i).every(
+                (d) => completedSet.has(d)
+              );
+          const unlocked = idx === 0 || previousComplete || completedInPhase > 0;
+          const isComplete = completedInPhase === totalDays;
+          const isCurrent = unlocked && !isComplete;
+
+          const nextDay = completedInPhase < totalDays ? phase.startDay + completedInPhase : phase.startDay;
+
+          return (
+            <div key={phase.id} className="sm:pl-14 relative">
+              <div className="hidden sm:flex absolute left-0 top-5 w-12 h-12 items-center justify-center">
+                <div className={`w-3 h-3 rounded-full ${isComplete ? "bg-success" : isCurrent ? "bg-primary" : "bg-border"}`} />
               </div>
-              <Link
-                href={`/learn/day/${unlocked ? (completedInPhase < totalDays ? phase.startDay + completedInPhase : phase.startDay) : phase.startDay}`}
-                className={`text-sm font-medium px-3 py-1.5 rounded-lg whitespace-nowrap ${
-                  unlocked ? "bg-primary text-primary-foreground hover:opacity-90" : "bg-bg-elevated text-muted cursor-not-allowed"
-                }`}
-                aria-disabled={!unlocked}
-              >
-                {isComplete ? "Review" : "Continue"}
-              </Link>
+              <PhaseCard
+                phase={phase}
+                state={isComplete ? "completed" : isCurrent ? "current" : "upcoming"}
+                completedInPhase={completedInPhase}
+                totalDays={totalDays}
+                href={`/learn/day/${unlocked ? nextDay : phase.startDay}`}
+              />
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+
+      <div className="flex flex-col items-center gap-1 mt-4">
+        <div className="w-12 h-12 rounded-full bg-accent/20 text-accent flex items-center justify-center font-bold">
+          <Icon name="Trophy" size={18} />
+        </div>
+        <p className="text-xs text-muted">FOUNDER PROJECT</p>
+      </div>
     </div>
   );
 }
