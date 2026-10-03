@@ -12,10 +12,12 @@ import {
   findUserById,
   deleteAllSessionsForUser,
 } from "@/lib/db/auth-queries";
+import { isUniqueViolation } from "@/lib/db/errors";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSessionCookie, clearSessionCookie } from "@/lib/auth/session";
 import { signupSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, changePasswordSchema } from "@/lib/auth/validation";
 import { checkRateLimit } from "@/lib/auth/rate-limit";
+import { sanitizeNextPath } from "@/lib/auth/safe-redirect";
 import { requireUserForApi } from "@/lib/auth/dal";
 
 export type FormState = { error?: string; fieldErrors?: Record<string, string[]>; success?: string } | undefined;
@@ -25,6 +27,8 @@ async function clientKey(prefix: string) {
   const ip = h.get("x-forwarded-for") ?? "unknown";
   return `${prefix}:${ip}`;
 }
+
+const DUPLICATE_EMAIL_ERROR = "An account with this email already exists.";
 
 export async function signup(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = signupSchema.safeParse({
@@ -37,15 +41,34 @@ export async function signup(_prev: FormState, formData: FormData): Promise<Form
     return { fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
+  // Keyed by normalized email (not IP) so repeated signup attempts against one address are
+  // limited regardless of source, matching the same pattern already used for login/forgot-password
+  // - see docs/PHASE-5.2.md "Rate limiting".
+  const rate = checkRateLimit(`signup:${parsed.data.email}`);
+  if (!rate.allowed) {
+    return { error: "Too many attempts. Please try again in a few minutes." };
+  }
+
   const db = getDb();
   const existing = await findUserByEmail(db, parsed.data.email);
   if (existing) {
-    // Deliberately generic: do not confirm an account exists via a different message than other errors.
-    return { error: "Could not create an account with those details." };
+    return { error: DUPLICATE_EMAIL_ERROR };
   }
 
   const passwordHash = await hashPassword(parsed.data.password);
-  const user = await createUser(db, { email: parsed.data.email, passwordHash, name: parsed.data.name });
+  let user;
+  try {
+    user = await createUser(db, { email: parsed.data.email, passwordHash, name: parsed.data.name });
+  } catch (err) {
+    // The findUserByEmail check above is an optimization, not the real guarantee - two concurrent
+    // signups for the same email can both pass it before either INSERT commits. The DB's own
+    // unique index (users_email_unique) is the actual source of truth and rejects the second
+    // insert; we surface that as the same generic duplicate-email message, never a raw DB error.
+    if (isUniqueViolation(err)) {
+      return { error: DUPLICATE_EMAIL_ERROR };
+    }
+    throw err;
+  }
   await createSessionCookie(user.id);
   redirect("/dashboard");
 }
@@ -76,7 +99,12 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   if (!valid) return { error: genericError };
 
   await createSessionCookie(user.id);
-  redirect("/dashboard");
+  // src/proxy.ts sets ?next=<original path> when it redirects an unauthenticated visitor here -
+  // honor it so they land back where they were headed, but only ever a validated, same-app
+  // relative path (see src/lib/auth/safe-redirect.ts). Never trust this enough to redirect
+  // off-site - docs/PHASE-5.2.md "Login redirect".
+  const next = sanitizeNextPath(formData.get("next"));
+  redirect(next ?? "/dashboard");
 }
 
 export async function logout(): Promise<void> {

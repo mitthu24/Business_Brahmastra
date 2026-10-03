@@ -11,6 +11,7 @@ import {
   consumePasswordResetToken,
 } from "./auth-queries";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { isUniqueViolation } from "./errors";
 import type { Database } from "./types";
 
 let db: Database;
@@ -27,9 +28,32 @@ describe("users & passwords", () => {
     expect(await verifyPassword("wrong-password", hash)).toBe(false);
   });
 
-  it("enforces unique email at the DB level", async () => {
+  it("enforces unique email at the DB level with a unique_violation (23505), the exact shape isUniqueViolation detects", async () => {
     await createUser(db, { email: "dup@example.com", passwordHash: "x", name: "A" });
-    await expect(createUser(db, { email: "dup@example.com", passwordHash: "y", name: "B" })).rejects.toThrow();
+    try {
+      await createUser(db, { email: "dup@example.com", passwordHash: "y", name: "B" });
+      expect.unreachable("second createUser with the same email should have thrown");
+    } catch (err) {
+      expect(isUniqueViolation(err)).toBe(true);
+    }
+  });
+
+  it("two concurrent signups for the same email result in exactly one user, the other rejected - not two rows", async () => {
+    const [a, b] = await Promise.allSettled([
+      createUser(db, { email: "race@example.com", passwordHash: "x", name: "A" }),
+      createUser(db, { email: "race@example.com", passwordHash: "y", name: "B" }),
+    ]);
+    const outcomes = [a.status, b.status];
+    expect(outcomes.filter((s) => s === "fulfilled").length).toBe(1);
+    expect(outcomes.filter((s) => s === "rejected").length).toBe(1);
+  });
+
+  it("never stores the plaintext password - only the bcrypt hash", async () => {
+    const plain = "my-plain-password-123";
+    const hash = await hashPassword(plain);
+    const user = await createUser(db, { email: "plain@example.com", passwordHash: hash, name: "P" });
+    expect(user.passwordHash).not.toBe(plain);
+    expect(user.passwordHash).toMatch(/^\$2[aby]\$/); // bcrypt hash format
   });
 
   it("findUserByEmail does not leak whether an account exists via thrown errors", async () => {
