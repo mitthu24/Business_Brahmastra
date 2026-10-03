@@ -21,7 +21,7 @@ export function LessonInteractive({ lesson }: { lesson: Lesson }) {
   const [application, setApplication] = useState("");
   const [reflectionSaved, setReflectionSaved] = useState(false);
 
-  const isDayCompleted = useProgressStore((s) => s.isDayCompleted);
+  const completedDays = useProgressStore((s) => s.completedDays);
   const completeDay = useProgressStore((s) => s.completeDay);
   const completeExercise = useProgressStore((s) => s.completeExercise);
   const completeCaseStudy = useProgressStore((s) => s.completeCaseStudy);
@@ -29,7 +29,9 @@ export function LessonInteractive({ lesson }: { lesson: Lesson }) {
   const saveReflection = useProgressStore((s) => s.saveReflection);
   const quizAttempts = useProgressStore((s) => s.quizAttempts);
 
-  const dayDone = isDayCompleted(lesson.day);
+  // Subscribe to the underlying `completedDays` array (not the `isDayCompleted` getter function,
+  // whose reference never changes) so this component actually re-renders when completion state changes.
+  const dayDone = completedDays.includes(lesson.day);
   const alreadyAttemptedQuiz = Boolean(quizAttempts[lesson.id]);
   const allQuestionsAnswered = lesson.quiz.every((q) => selectedAnswers[q.id] !== undefined);
 
