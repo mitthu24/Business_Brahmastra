@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useLocalStorageState } from "@/lib/use-local-storage-state";
-import { journalCategories, createJournalEntry, type JournalEntry, type JournalCategory } from "@/lib/journal";
+import { journalCategories, createJournalEntry, categoryIcon, type JournalEntry, type JournalCategory } from "@/lib/journal";
 import { useProgressStore } from "@/lib/progress/store";
 import { getLessonByDay } from "@/lib/content/lessons";
 import { Icon } from "@/components/nav/Icon";
 
 export function JournalView() {
   const [entries, setEntries] = useLocalStorageState<JournalEntry[]>("founder-journal", []);
-  const [category, setCategory] = useState<JournalCategory>("Business idea");
+  const [category, setCategory] = useState<JournalCategory>(journalCategories[0].label);
+  const [filter, setFilter] = useState<JournalCategory | "All">("All");
   const [text, setText] = useState("");
   const reflections = useProgressStore((s) => s.reflections);
 
@@ -23,6 +24,11 @@ export function JournalView() {
     setEntries((prev) => prev.filter((e) => e.id !== id));
   }
 
+  const filteredEntries = useMemo(
+    () => (filter === "All" ? entries : entries.filter((e) => e.category === filter)),
+    [entries, filter]
+  );
+
   const reflectionEntries = Object.entries(reflections);
 
   return (
@@ -33,13 +39,13 @@ export function JournalView() {
           <div className="flex flex-wrap gap-2 mb-4">
             {journalCategories.map((c) => (
               <button
-                key={c}
-                onClick={() => setCategory(c)}
-                className={`text-xs rounded-full px-3 py-1.5 transition-colors ${
-                  category === c ? "bg-primary text-primary-foreground" : "border border-border text-muted hover:text-foreground"
+                key={c.label}
+                onClick={() => setCategory(c.label)}
+                className={`text-xs rounded-full px-3 py-1.5 transition-colors flex items-center gap-1 ${
+                  category === c.label ? "bg-primary text-primary-foreground" : "border border-border text-muted hover:text-foreground"
                 }`}
               >
-                {c}
+                <span aria-hidden>{c.icon}</span> {c.label}
               </button>
             ))}
           </div>
@@ -55,13 +61,28 @@ export function JournalView() {
           </button>
         </div>
 
-        <h2 className="text-sm font-semibold text-muted mb-3">YOUR ENTRIES ({entries.length})</h2>
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <h2 className="text-sm font-semibold text-muted">YOUR ENTRIES ({filteredEntries.length})</h2>
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value as JournalCategory | "All")}
+            aria-label="Filter entries by category"
+            className="text-xs rounded-lg border border-border bg-bg-elevated px-2 py-1.5"
+          >
+            <option value="All">All categories</option>
+            {journalCategories.map((c) => (
+              <option key={c.label} value={c.label}>{c.icon} {c.label}</option>
+            ))}
+          </select>
+        </div>
         <div className="space-y-3">
-          {entries.length === 0 && <p className="text-sm text-muted">No entries yet.</p>}
-          {entries.map((e) => (
+          {filteredEntries.length === 0 && <p className="text-sm text-muted">No entries yet.</p>}
+          {filteredEntries.map((e) => (
             <div key={e.id} className="card p-4">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs rounded-full bg-primary/15 text-primary px-2.5 py-0.5">{e.category}</span>
+                <span className="text-xs rounded-full bg-primary/15 text-primary px-2.5 py-0.5 flex items-center gap-1">
+                  <span aria-hidden>{categoryIcon(e.category)}</span> {e.category}
+                </span>
                 <button onClick={() => removeEntry(e.id)} aria-label="Delete entry">
                   <Icon name="Trash2" size={14} className="text-muted hover:text-danger" />
                 </button>

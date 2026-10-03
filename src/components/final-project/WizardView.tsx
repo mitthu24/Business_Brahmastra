@@ -110,8 +110,17 @@ function SummaryView({ answers, onBack }: { answers: WizardAnswers; onBack: () =
       </div>
 
       <div id="business-plan-print" className="card p-8 max-w-3xl">
-        <h1 className="text-2xl font-bold mb-1">My Business Plan</h1>
-        <p className="text-sm text-muted mb-6">Generated from the 90-Day Business School Final Project wizard.</p>
+        <p className="text-xs font-semibold text-primary tracking-wide mb-1">MY BUSINESS PLAN</p>
+        <h1 className="text-2xl font-bold mb-1">{answers.idea?.trim() || "Untitled Business"}</h1>
+        <p className="text-sm text-muted mb-6">Generated from the 90-Day Business School Final Project wizard · {completionPercent(answers)}% complete.</p>
+
+        {answers.finalPitch?.trim() && (
+          <div className="card bg-accent/10 border-accent/30 p-4 mb-6">
+            <p className="text-xs font-semibold text-accent mb-1">VISION / ELEVATOR PITCH</p>
+            <p className="text-sm whitespace-pre-wrap">{answers.finalPitch}</p>
+          </div>
+        )}
+
         <div className="space-y-6">
           {wizardSteps.map((s) => (
             <div key={s.id}>

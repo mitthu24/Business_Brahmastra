@@ -12,6 +12,7 @@ export function MarginCalculator() {
       ]}
       resultConfigs={[{ id: "marginPercent", label: "Margin %", format: (v) => `${v.toFixed(1)}%`, highlight: true }]}
       compute={(v) => ({ marginPercent: calcMargin(v.revenue, v.cost) })}
+      interpretation={({ results }) => `Out of every ₹100 in revenue, ₹${results.marginPercent.toFixed(0)} remains as profit after costs.`}
     />
   );
 }

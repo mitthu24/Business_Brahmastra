@@ -2,6 +2,7 @@
 
 import { LiveCalculator } from "./LiveCalculator";
 import { calcLTV, calcLtvCacRatio } from "@/lib/calculators";
+import { UnitEconomicsDiagram } from "@/components/visuals/UnitEconomicsDiagram";
 
 export function LtvCalculator() {
   return (
@@ -19,6 +20,12 @@ export function LtvCalculator() {
         const ltv = calcLTV(v.arpu, v.lifetime);
         return { ltv, ratio: calcLtvCacRatio(ltv, v.cac) };
       }}
+      chart={({ values }) => <UnitEconomicsDiagram arpu={values.arpu} lifetimeMonths={values.lifetime} cac={values.cac} />}
+      interpretation={({ results }) =>
+        Number.isFinite(results.ratio) && results.ratio >= 3
+          ? `A customer is worth about ${results.ratio.toFixed(1)}x what you spend to acquire them — generally considered healthy unit economics.`
+          : `A customer is only worth about ${Number.isFinite(results.ratio) ? results.ratio.toFixed(1) : "∞"}x what you spend to acquire them — below the commonly cited 3:1 healthy benchmark, worth investigating.`
+      }
     />
   );
 }

@@ -12,6 +12,7 @@ export function RoiCalculator() {
       ]}
       resultConfigs={[{ id: "roi", label: "ROI", format: (v) => `${v.toFixed(1)}%`, highlight: true }]}
       compute={(v) => ({ roi: calcROI(v.gain, v.investment) })}
+      interpretation={({ results }) => `For every ₹100 invested, you gained about ₹${results.roi.toFixed(0)} in return.`}
     />
   );
 }

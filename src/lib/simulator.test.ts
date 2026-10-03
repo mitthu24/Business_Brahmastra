@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { runSimulation } from "./simulator";
+import { runSimulation, deriveSimulationOutlook } from "./simulator";
 
 describe("runSimulation", () => {
   it("computes revenue, COGS, gross profit, OPEX, net profit, and margin correctly", () => {
@@ -55,5 +55,36 @@ describe("runSimulation", () => {
       otherCostPerUnit: 150,
     });
     expect(result.breakEvenUnits).toBe(Infinity);
+  });
+});
+
+describe("deriveSimulationOutlook", () => {
+  it("rates a healthy, profitable simulation as strong with low risk", () => {
+    const results = runSimulation({
+      price: 1000,
+      customers: 1000,
+      marketingCost: 50000,
+      employeeCost: 100000,
+      rent: 50000,
+      otherCostPerUnit: 300,
+    });
+    const outlook = deriveSimulationOutlook(results);
+    expect(outlook.risk).toBe("Low");
+    expect(outlook.growth).toBe("Strong");
+  });
+
+  it("rates a cash-burning simulation as weak growth with elevated risk", () => {
+    const results = runSimulation({
+      price: 200,
+      customers: 500,
+      marketingCost: 100000,
+      employeeCost: 150000,
+      rent: 80000,
+      otherCostPerUnit: 150,
+    });
+    const outlook = deriveSimulationOutlook(results);
+    expect(results.netProfit).toBeLessThan(0);
+    expect(outlook.growth).toBe("Weak");
+    expect(["Medium", "High"]).toContain(outlook.risk);
   });
 });

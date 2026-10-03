@@ -32,6 +32,26 @@ export function runSimulation(inputs: SimulatorInputs): SimulatorResults {
   return { revenue, cogs, grossProfit, operatingExpenses, netProfit, marginPercent, breakEvenUnits, cashBurn };
 }
 
+export type OutlookLevel = "Strong" | "Stable" | "Weak";
+export type RiskLevel = "Low" | "Medium" | "High";
+
+export interface SimulationOutlook {
+  customerSatisfaction: OutlookLevel;
+  risk: RiskLevel;
+  growth: OutlookLevel;
+}
+
+/**
+ * Derives simple, labelled outlook categories from simulation results — illustrative heuristics for
+ * teaching purposes, not a prediction of real-world outcomes. Reuses runSimulation's own numbers only.
+ */
+export function deriveSimulationOutlook(results: SimulatorResults): SimulationOutlook {
+  const customerSatisfaction: OutlookLevel = results.marginPercent >= 15 ? "Strong" : results.marginPercent >= 0 ? "Stable" : "Weak";
+  const risk: RiskLevel = results.cashBurn === 0 ? "Low" : results.marginPercent >= -10 ? "Medium" : "High";
+  const growth: OutlookLevel = results.netProfit > 0 && results.marginPercent >= 10 ? "Strong" : results.netProfit >= 0 ? "Stable" : "Weak";
+  return { customerSatisfaction, risk, growth };
+}
+
 export interface BusinessTypeConfig {
   id: string;
   label: string;

@@ -40,9 +40,9 @@ export function ValidatorView() {
 
       <div>
         <div className="card p-4 mb-4 bg-accent/10 border-accent/30 text-sm">
-          <strong>This is a Startup Readiness Checklist, not a success predictor.</strong> No tool can objectively
-          predict whether a startup will succeed — this only reflects how clearly you&apos;ve defined the basics,
-          based on what you typed above.
+          <strong>This checklist helps identify areas that need more validation. It does not predict startup success.</strong>{" "}
+          No tool can objectively predict whether a startup will succeed — this only reflects how clearly you&apos;ve
+          defined the basics, based on what you typed above.
         </div>
         {!checklist && <p className="text-muted text-sm">Fill in the form and generate your checklist.</p>}
         {checklist && (

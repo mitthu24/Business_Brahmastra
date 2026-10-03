@@ -1,8 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { businessTypes, runSimulation, scenarios, type SimulatorInputs } from "@/lib/simulator";
+import { businessTypes, runSimulation, deriveSimulationOutlook, scenarios, type SimulatorInputs, type OutlookLevel, type RiskLevel } from "@/lib/simulator";
 import { Icon } from "@/components/nav/Icon";
+
+const outlookColor: Record<OutlookLevel, string> = { Strong: "text-success", Stable: "text-primary", Weak: "text-danger" };
+const riskColor: Record<RiskLevel, string> = { Low: "text-success", Medium: "text-warning", High: "text-danger" };
 
 const fieldLabels: Record<keyof SimulatorInputs, string> = {
   price: "Price per Customer/Unit (₹)",
@@ -20,6 +23,7 @@ export function SimulatorView() {
   const [selectedScenario, setSelectedScenario] = useState<Record<string, string>>({});
 
   const results = useMemo(() => runSimulation(inputs), [inputs]);
+  const outlook = useMemo(() => deriveSimulationOutlook(results), [results]);
 
   function selectType(id: string) {
     const type = businessTypes.find((t) => t.id === id);
@@ -79,10 +83,19 @@ export function SimulatorView() {
             <ResultRow label="Monthly Cash Burn" value={results.cashBurn > 0 ? fmt(results.cashBurn) : "None — profitable"} warn={results.cashBurn > 0} />
           </div>
         </div>
+
+        <div className="mt-4">
+          <p className="text-xs text-muted mb-2">SIMULATION OUTCOME <span className="text-warning">(illustrative scenario, not a real-world prediction)</span></p>
+          <div className="grid grid-cols-3 gap-3">
+            <OutlookCard label="Customer Satisfaction" value={outlook.customerSatisfaction} colorClass={outlookColor[outlook.customerSatisfaction]} />
+            <OutlookCard label="Risk" value={outlook.risk} colorClass={riskColor[outlook.risk]} />
+            <OutlookCard label="Growth" value={outlook.growth} colorClass={outlookColor[outlook.growth]} />
+          </div>
+        </div>
       </section>
 
       <section>
-        <h2 className="text-sm font-semibold text-muted mb-3">3. REACT TO BUSINESS SCENARIOS</h2>
+        <h2 className="text-sm font-semibold text-muted mb-3">3. REACT TO BUSINESS SCENARIOS <span className="text-warning font-normal">(illustrative scenarios)</span></h2>
         <div className="space-y-6">
           {scenarios.map((s) => (
             <div key={s.id} className="card p-5">
@@ -121,6 +134,15 @@ function ResultRow({ label, value, highlight, warn }: { label: string; value: st
     <div className={`card p-3.5 flex items-center justify-between ${highlight ? "bg-primary/10 border-primary/30" : ""}`}>
       <span className="text-sm text-muted">{label}</span>
       <span className={`font-semibold ${warn ? "text-warning" : highlight ? "text-primary" : ""}`}>{value}</span>
+    </div>
+  );
+}
+
+function OutlookCard({ label, value, colorClass }: { label: string; value: string; colorClass: string }) {
+  return (
+    <div className="card p-3 text-center">
+      <p className="text-xs text-muted mb-1">{label}</p>
+      <p className={`text-sm font-bold ${colorClass}`}>{value}</p>
     </div>
   );
 }

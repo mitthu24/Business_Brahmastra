@@ -12,6 +12,7 @@ export function ConversionCalculator() {
       ]}
       resultConfigs={[{ id: "rate", label: "Conversion Rate", format: (v) => `${v.toFixed(1)}%`, highlight: true }]}
       compute={(v) => ({ rate: calcConversionRate(v.conversions, v.visitors) })}
+      interpretation={({ results }) => `Out of every 100 visitors or leads, about ${results.rate.toFixed(1)} become a customer.`}
     />
   );
 }

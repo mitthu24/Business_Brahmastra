@@ -12,6 +12,7 @@ export function CacCalculator() {
       ]}
       resultConfigs={[{ id: "cac", label: "CAC (per customer)", format: (v) => `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, highlight: true }]}
       compute={(v) => ({ cac: calcCAC(v.spend, v.customers) })}
+      interpretation={({ results }) => `It costs about ₹${Math.round(results.cac).toLocaleString("en-IN")} in sales and marketing spend to win one new customer.`}
     />
   );
 }

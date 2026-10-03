@@ -2,6 +2,7 @@
 
 import { LiveCalculator } from "./LiveCalculator";
 import { calcPostMoneyValuation, calcInvestorOwnership } from "@/lib/calculators";
+import { FundingDilutionDiagram } from "@/components/visuals/FundingDilutionDiagram";
 
 export function ValuationCalculator() {
   return (
@@ -18,6 +19,12 @@ export function ValuationCalculator() {
         const postMoney = calcPostMoneyValuation(v.preMoney, v.investment);
         return { postMoney, ownership: calcInvestorOwnership(v.investment, postMoney) };
       }}
+      chart={({ results }) => (
+        <FundingDilutionDiagram previousOwnershipPercent={100} newInvestorOwnershipPercent={results.ownership} />
+      )}
+      interpretation={({ results }) =>
+        `By accepting this investment, the founder's ownership moves from 100% to ${(100 - results.ownership).toFixed(1)}% — the new investor takes ${results.ownership.toFixed(1)}% of a now larger, better-funded company.`
+      }
     />
   );
 }

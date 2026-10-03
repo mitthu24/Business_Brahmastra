@@ -13,8 +13,13 @@ export function AchievementsView() {
       {achievements.map((a) => {
         const isUnlocked = unlockedSet.has(a.id);
         return (
-          <div key={a.id} className={`card p-5 text-center ${isUnlocked ? "" : "opacity-50"}`}>
-            <div className={`w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-3 ${isUnlocked ? "bg-accent/20 text-accent" : "bg-bg-elevated text-muted"}`}>
+          <div
+            key={a.id}
+            className={`card p-5 text-center transition-transform duration-300 motion-reduce:transition-none ${
+              isUnlocked ? "hover:scale-[1.03]" : "opacity-50"
+            }`}
+          >
+            <div className={`w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-3 transition-colors ${isUnlocked ? "bg-accent/20 text-accent" : "bg-bg-elevated text-muted"}`}>
               <Icon name={a.icon} size={26} />
             </div>
             <h3 className="font-medium text-sm">{a.title}</h3>

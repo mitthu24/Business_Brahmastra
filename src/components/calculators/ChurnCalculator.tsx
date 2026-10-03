@@ -12,6 +12,7 @@ export function ChurnCalculator() {
       ]}
       resultConfigs={[{ id: "churn", label: "Churn Rate", format: (v) => `${v.toFixed(1)}%`, highlight: true }]}
       compute={(v) => ({ churn: calcChurnRate(v.lost, v.starting) })}
+      interpretation={({ results }) => `About ${results.churn.toFixed(1)}% of customers are leaving each period — you need new customers just to replace them before any real growth happens.`}
     />
   );
 }
