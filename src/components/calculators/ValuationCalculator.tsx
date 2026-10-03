@@ -8,8 +8,8 @@ export function ValuationCalculator() {
   return (
     <LiveCalculator
       fields={[
-        { id: "preMoney", label: "Pre-money Valuation", defaultValue: 90000000, prefix: "₹" },
-        { id: "investment", label: "Investment Amount", defaultValue: 10000000, prefix: "₹" },
+        { id: "preMoney", label: "Pre-money Valuation", defaultValue: 90000000, prefix: "₹", min: 0 },
+        { id: "investment", label: "Investment Amount", defaultValue: 10000000, prefix: "₹", min: 0 },
       ]}
       resultConfigs={[
         { id: "postMoney", label: "Post-money Valuation", format: (v) => `₹${v.toLocaleString("en-IN")}`, highlight: true },

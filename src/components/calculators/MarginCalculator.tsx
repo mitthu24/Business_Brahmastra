@@ -7,8 +7,8 @@ export function MarginCalculator() {
   return (
     <LiveCalculator
       fields={[
-        { id: "revenue", label: "Revenue", defaultValue: 2000000, prefix: "₹" },
-        { id: "cost", label: "Total Cost", defaultValue: 1200000, prefix: "₹" },
+        { id: "revenue", label: "Revenue", defaultValue: 2000000, prefix: "₹", min: 0 },
+        { id: "cost", label: "Total Cost", defaultValue: 1200000, prefix: "₹", min: 0 },
       ]}
       resultConfigs={[{ id: "marginPercent", label: "Margin %", format: (v) => `${v.toFixed(1)}%`, highlight: true }]}
       compute={(v) => ({ marginPercent: calcMargin(v.revenue, v.cost) })}

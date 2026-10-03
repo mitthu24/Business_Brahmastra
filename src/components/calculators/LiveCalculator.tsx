@@ -9,6 +9,16 @@ export interface FieldConfig {
   prefix?: string;
   suffix?: string;
   step?: number;
+  /** Clamps the value into [min, max] on change — use for inputs like percentages where out-of-range values would produce nonsensical results (e.g. negative ownership). */
+  min?: number;
+  max?: number;
+}
+
+function clamp(value: number, min?: number, max?: number) {
+  let result = value;
+  if (min !== undefined) result = Math.max(min, result);
+  if (max !== undefined) result = Math.min(max, result);
+  return result;
 }
 
 export interface ResultConfig {
@@ -54,10 +64,13 @@ export function LiveCalculator({
                   id={f.id}
                   type="number"
                   step={f.step ?? "any"}
+                  min={f.min}
+                  max={f.max}
                   value={values[f.id]}
-                  onChange={(e) =>
-                    setValues((prev) => ({ ...prev, [f.id]: e.target.value === "" ? 0 : Number(e.target.value) }))
-                  }
+                  onChange={(e) => {
+                    const raw = e.target.value === "" ? 0 : Number(e.target.value);
+                    setValues((prev) => ({ ...prev, [f.id]: clamp(raw, f.min, f.max) }));
+                  }}
                   className="w-full bg-transparent px-3 py-2.5 text-sm outline-none"
                 />
                 {f.suffix && <span className="px-3 text-muted text-sm">{f.suffix}</span>}

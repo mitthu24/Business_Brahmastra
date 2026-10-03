@@ -8,9 +8,9 @@ export function BreakEvenCalculator() {
   return (
     <LiveCalculator
       fields={[
-        { id: "fixedCosts", label: "Fixed Costs", defaultValue: 200000, prefix: "₹" },
-        { id: "sellingPrice", label: "Selling Price per Unit", defaultValue: 1000, prefix: "₹" },
-        { id: "variableCost", label: "Variable Cost per Unit", defaultValue: 600, prefix: "₹" },
+        { id: "fixedCosts", label: "Fixed Costs", defaultValue: 200000, prefix: "₹", min: 0 },
+        { id: "sellingPrice", label: "Selling Price per Unit", defaultValue: 1000, prefix: "₹", min: 0 },
+        { id: "variableCost", label: "Variable Cost per Unit", defaultValue: 600, prefix: "₹", min: 0 },
       ]}
       resultConfigs={[
         { id: "contributionPerUnit", label: "Contribution per Unit", format: (v) => `₹${v.toLocaleString("en-IN")}` },

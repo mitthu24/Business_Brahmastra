@@ -8,9 +8,9 @@ export function LtvCalculator() {
   return (
     <LiveCalculator
       fields={[
-        { id: "arpu", label: "Average Monthly Revenue per Customer", defaultValue: 500, prefix: "₹" },
-        { id: "lifetime", label: "Customer Lifetime (months)", defaultValue: 20 },
-        { id: "cac", label: "CAC (for comparison)", defaultValue: 2500, prefix: "₹" },
+        { id: "arpu", label: "Average Monthly Revenue per Customer", defaultValue: 500, prefix: "₹", min: 0 },
+        { id: "lifetime", label: "Customer Lifetime (months)", defaultValue: 20, min: 0 },
+        { id: "cac", label: "CAC (for comparison)", defaultValue: 2500, prefix: "₹", min: 0 },
       ]}
       resultConfigs={[
         { id: "ltv", label: "LTV", format: (v) => `₹${v.toLocaleString("en-IN")}`, highlight: true },

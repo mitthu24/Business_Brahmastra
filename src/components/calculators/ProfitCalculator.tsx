@@ -7,8 +7,8 @@ export function ProfitCalculator() {
   return (
     <LiveCalculator
       fields={[
-        { id: "revenue", label: "Revenue", defaultValue: 1000000, prefix: "₹" },
-        { id: "cost", label: "Total Cost", defaultValue: 700000, prefix: "₹" },
+        { id: "revenue", label: "Revenue", defaultValue: 1000000, prefix: "₹", min: 0 },
+        { id: "cost", label: "Total Cost", defaultValue: 700000, prefix: "₹", min: 0 },
       ]}
       resultConfigs={[
         { id: "profit", label: "Profit", format: (v) => `₹${v.toLocaleString("en-IN")}`, highlight: true },
