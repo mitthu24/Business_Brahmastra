@@ -301,3 +301,62 @@ export const caseStudyEntries = pgTable("case_study_entries", {
   index("case_study_entries_status_idx").on(t.status),
   index("case_study_entries_category_idx").on(t.category),
 ]);
+
+/**
+ * Curriculum/lesson CMS (Phase 5.3 slice 3, docs/PHASE-5.3.md "Curriculum + lesson CMS"). One flat
+ * table mirroring the existing `Lesson` shape (src/lib/content/types.ts) field-for-field - no
+ * lesson_sections/vocabulary/exercises/quizzes normalization, since the real lesson model has no
+ * variable-cardinality content beyond the small, fixed-shape `quiz` array, which is stored as JSON
+ * exactly like glossaryEntries.relatedTerms above.
+ *
+ * `day` (1-90) is the canonical identifier used by every piece of learner state in this app
+ * (lesson_completions.day, exercise_completions.day, case_study_completions.day, quiz_attempts.day,
+ * achievements' phase-range checks, the client progress store, the localStorage migration) - see
+ * docs/PHASE-5.3.md "Curriculum CMS: stable identifiers" for the full inventory. `id` is kept as
+ * the exact "day-N" string the app already uses as a lesson identifier (lesson_reflections.lesson_id
+ * persists this literal string), generated from `day` so it never drifts. `slug` is carried along
+ * for parity with the hardcoded source but - like in the hardcoded model - has no route or
+ * progress-key role; it is purely descriptive.
+ *
+ * `phaseId` is a plain text reference to the existing hardcoded `phases` array
+ * (src/lib/content/phases.ts), not a foreign key to a curriculum_phases table: there are exactly
+ * 15 fixed phases with fixed day ranges, nothing about them is founder-editable in this slice, and
+ * a phases table would add a join everywhere phases are already resolved by a simple day-range
+ * lookup (getPhaseForDay) with zero behavioral benefit.
+ */
+export const lessons = pgTable("lessons", {
+  id: text("id").primaryKey(), // "day-N", generated from day - see note above
+  day: integer("day").notNull(),
+  phaseId: text("phase_id").notNull(),
+  slug: text("slug").notNull(),
+  title: text("title").notNull(),
+  objective: text("objective").notNull(),
+  concept: text("concept").notNull(),
+  simpleExplanation: text("simple_explanation").notNull(),
+  analogy: text("analogy").notNull(),
+  businessExample: text("business_example").notNull(),
+  indiaExample: text("india_example"),
+  startupExample: text("startup_example"),
+  formula: text("formula"), // JSON-encoded {name, expression, workedExample} | null
+  mnemonic: text("mnemonic"), // JSON-encoded {label, breakdown: string[]} | null
+  commonMistake: text("common_mistake").notNull(),
+  exercisePrompt: text("exercise_prompt").notNull(),
+  exerciseAnswer: text("exercise_answer").notNull(),
+  caseStudy: text("case_study").notNull(),
+  founderQuestion: text("founder_question").notNull(),
+  quiz: text("quiz").notNull().default("[]"), // JSON-encoded QuizQuestion[]
+  takeaways: text("takeaways").notNull().default("[]"), // JSON-encoded string[]
+  rememberThis: text("remember_this").notNull(),
+  status: contentStatusEnum("status").notNull().default("draft"),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+  updatedBy: text("updated_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("lessons_day_unique").on(t.day),
+  uniqueIndex("lessons_slug_unique").on(t.slug),
+  index("lessons_phase_id_idx").on(t.phaseId),
+  index("lessons_status_idx").on(t.status),
+  index("lessons_updated_at_idx").on(t.updatedAt),
+]);

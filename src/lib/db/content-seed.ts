@@ -2,15 +2,17 @@
 // scripts/seed-content.ts, a plain tsx/node operator script run outside Next's bundler, where the
 // server-only package's import-time check throws. It is never imported by a client component.
 import type { Database } from "./types";
-import { glossaryEntries, formulaEntries, caseStudyEntries } from "./schema";
+import { glossaryEntries, formulaEntries, caseStudyEntries, lessons as lessonsTable } from "./schema";
 import { glossary } from "@/lib/content/glossary";
 import { formulas } from "@/lib/content/formulas";
 import { caseStudies } from "@/lib/content/case-studies";
+import { allLessons } from "@/lib/content/lessons";
 
 export interface ContentSeedResult {
   glossaryInserted: number;
   formulasInserted: number;
   caseStudiesInserted: number;
+  lessonsInserted: number;
 }
 
 /**
@@ -81,9 +83,43 @@ export async function seedContentFromHardcoded(db: Database): Promise<ContentSee
     .onConflictDoNothing({ target: caseStudyEntries.id })
     .returning({ id: caseStudyEntries.id });
 
+  const lessonsResult = await db
+    .insert(lessonsTable)
+    .values(
+      allLessons.map((l) => ({
+        id: l.id,
+        day: l.day,
+        phaseId: l.phaseId,
+        slug: l.slug,
+        title: l.title,
+        objective: l.objective,
+        concept: l.concept,
+        simpleExplanation: l.simpleExplanation,
+        analogy: l.analogy,
+        businessExample: l.businessExample,
+        indiaExample: l.indiaExample ?? null,
+        startupExample: l.startupExample ?? null,
+        formula: l.formula ? JSON.stringify(l.formula) : null,
+        mnemonic: l.mnemonic ? JSON.stringify(l.mnemonic) : null,
+        commonMistake: l.commonMistake,
+        exercisePrompt: l.exercise.prompt,
+        exerciseAnswer: l.exercise.answer,
+        caseStudy: l.caseStudy,
+        founderQuestion: l.founderQuestion,
+        quiz: JSON.stringify(l.quiz),
+        takeaways: JSON.stringify(l.takeaways),
+        rememberThis: l.rememberThis,
+        status: "published" as const,
+        publishedAt: new Date(),
+      }))
+    )
+    .onConflictDoNothing({ target: lessonsTable.id })
+    .returning({ id: lessonsTable.id });
+
   return {
     glossaryInserted: glossaryResult.length,
     formulasInserted: formulasResult.length,
     caseStudiesInserted: caseStudiesResult.length,
+    lessonsInserted: lessonsResult.length,
   };
 }

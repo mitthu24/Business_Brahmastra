@@ -1,6 +1,7 @@
 /**
- * One-off operator script to copy the existing hardcoded glossary/formula/case-study content into
- * the new CMS tables (docs/PHASE-5.3.md "Reference content CMS migration"). Safe to re-run - see
+ * One-off operator script to copy the existing hardcoded glossary/formula/case-study/lesson content
+ * into the new CMS tables (docs/PHASE-5.3.md "Reference content CMS migration" and "Curriculum +
+ * lesson CMS migration"). Safe to re-run - see
  * src/lib/db/content-seed.ts#seedContentFromHardcoded for the idempotency guarantee. Run with
  * DATABASE_URL pointed at the target database:
  *
@@ -26,6 +27,7 @@ async function main() {
     console.log(`Glossary rows inserted: ${result.glossaryInserted}`);
     console.log(`Formula rows inserted: ${result.formulasInserted}`);
     console.log(`Case study rows inserted: ${result.caseStudiesInserted}`);
+    console.log(`Lesson rows inserted: ${result.lessonsInserted}`);
   } finally {
     await sql.end();
   }

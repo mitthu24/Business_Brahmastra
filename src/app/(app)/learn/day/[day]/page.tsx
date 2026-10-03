@@ -5,6 +5,8 @@ import { hasProtectedAccess } from "@/lib/access/status";
 import { AccessExpiredNotice } from "@/components/access/AccessExpiredNotice";
 import { allLessons, getLessonByDay, TOTAL_DAYS } from "@/lib/content/lessons";
 import { getPhaseForDay } from "@/lib/content/phases";
+import { getPublishedLessonByDayForLearner } from "@/lib/db/lesson-queries";
+import { getDb } from "@/lib/db/client";
 import { LessonInteractive } from "@/components/lesson/LessonInteractive";
 import { LessonSection } from "@/components/ui/LessonSection";
 import { FormulaCard } from "@/components/ui/FormulaCard";
@@ -18,6 +20,15 @@ export function generateStaticParams() {
   return allLessons.map((l) => ({ day: String(l.day) }));
 }
 
+/**
+ * Metadata deliberately stays on the fast, build-safe hardcoded lookup rather than the DB-backed
+ * published-lesson query below: generateMetadata runs once per generateStaticParams path AT BUILD
+ * TIME, and a DB round trip there (x90) is both slow and a hard build-time dependency on the
+ * database being reachable, which it may not be from every build environment. A founder's title
+ * edit showing up a build cycle later in the <title> tag is an acceptable tradeoff; the page BODY
+ * below (what the learner actually reads) is what must respect draft/publish status, not the tab
+ * title - see getPublishedLessonByDayForLearner for that server-side, published-only read path.
+ */
 export async function generateMetadata({ params }: { params: Promise<{ day: string }> }): Promise<Metadata> {
   const { day } = await params;
   const lesson = getLessonByDay(Number(day));
@@ -28,8 +39,9 @@ export async function generateMetadata({ params }: { params: Promise<{ day: stri
 export default async function LessonPage({ params }: { params: Promise<{ day: string }> }) {
   const { day } = await params;
   const dayNum = Number(day);
-  const lesson = getLessonByDay(dayNum);
-  if (!lesson || !Number.isInteger(dayNum) || dayNum < 1 || dayNum > TOTAL_DAYS) notFound();
+  if (!Number.isInteger(dayNum) || dayNum < 1 || dayNum > TOTAL_DAYS) notFound();
+  const lesson = await getPublishedLessonByDayForLearner(getDb(), dayNum);
+  if (!lesson) notFound();
 
   // Server-side lesson access check (docs/PHASE-5.md "Lesson access"): authentication is already
   // enforced by the (app) layout, but lesson *content* additionally requires live access status -
