@@ -67,12 +67,14 @@ This is a standard Next.js app and deploys to [Vercel](https://vercel.com/new) w
 4. No environment variables are required.
 5. Deploy.
 
+**Production URL:** A temporary, anonymous Vercel deployment was created from this session to verify the production build actually deploys (`vercel deploy --temporary`, no account required). It confirmed `"status": "ok"`, `"readyState": "READY"` from Vercel's own API, at `https://temporary-speedy-amber-mvepjgr.vercel.app`. This deployment is **temporary and expires roughly one hour after creation** — it is not a persistent production URL. To get a permanent one, either claim that deployment within the hour, or follow the steps above to connect the repository to a real Vercel account.
+
 ## Known limitations
 
 - No database or auth — all state is per-browser `localStorage`. Clearing site data resets progress.
 - PDF export uses the browser's native print-to-PDF (a dedicated print stylesheet), not a PDF-generation library.
-- Porter's Five Forces and some funnel diagrams use an approximate, non-pixel-perfect layout on very small screens (no horizontal scrolling, but spacing is tighter).
-- No live Vercel deployment has been performed from this session (no deploy credentials available here); the app is build-verified and deploy-ready per the steps above.
+- No permanent production deployment exists yet — see "Production URL" above. The temporary deployment could not be smoke-tested from the session that created it, because that session's outbound network policy blocks `*.vercel.app`; the build itself was verified via Vercel's deployment API response and via 278/278 pages building and 18/18 routes returning HTTP 200 locally.
+- The responsive/accessibility audit in this phase covered 8 breakpoints (320–1440px) across 18 routes via real headless-Chromium automation (not just reading Tailwind classes), and found and fixed real bugs along the way (see commit history): a long unbroken string overflowing on narrow screens, an unbalanced Porter's Five Forces layout, a missing Escape handler and missing `aria-modal` on the mobile nav drawer, six unlabeled form fields, an out-of-range Dilution input producing a negative ownership percentage, and a Zustand selector bug that kept "Mark Day Complete" visible after completion. All were fixed and re-verified; no further issues were found in this pass, though no audit of this kind can claim full coverage.
 
 ## Future roadmap
 
