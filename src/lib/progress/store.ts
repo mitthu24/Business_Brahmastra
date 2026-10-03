@@ -15,6 +15,21 @@ interface QuizAttemptRecord {
   completedAt: string;
 }
 
+/** Server-authoritative snapshot shape returned by /api/progress - see src/lib/db/progress-queries.ts. */
+export interface ServerProgressSnapshot {
+  completedDays: number[];
+  completedExercises: number[];
+  completedCaseStudies: number[];
+  quizAttempts: Record<number, QuizAttemptRecord>;
+  xp: number;
+  streak: StreakState;
+  unlockedAchievements: string[];
+  finalProjectCompleted: boolean;
+  reflections: Record<string, { learned: string; application: string }>;
+}
+
+export type SyncStatus = "idle" | "saving" | "saved" | "error" | "offline";
+
 interface ProgressState {
   completedDays: number[]; // serializable array (Set isn't JSON-safe)
   completedExercises: string[]; // lesson ids
@@ -26,6 +41,9 @@ interface ProgressState {
   finalProjectCompleted: boolean;
   reflections: Record<string, { learned: string; application: string }>;
 
+  syncStatus: SyncStatus;
+  hydrated: boolean;
+
   completeDay: (day: number) => void;
   completeExercise: (lessonId: string) => void;
   completeCaseStudy: (lessonId: string) => void;
@@ -34,6 +52,59 @@ interface ProgressState {
   saveReflection: (lessonId: string, learned: string, application: string) => void;
   isDayCompleted: (day: number) => boolean;
   isDayUnlocked: (day: number) => boolean;
+
+  hydrateFromServer: (snapshot: ServerProgressSnapshot) => void;
+  retrySync: () => void;
+}
+
+function dayToLessonId(day: number): string {
+  return `day-${day}`;
+}
+
+function lessonIdToDay(lessonId: string): number | null {
+  const m = lessonId.match(/day-(\d+)/);
+  return m ? Number(m[1]) : null;
+}
+
+function applySnapshot(snapshot: ServerProgressSnapshot) {
+  const quizAttempts: Record<string, QuizAttemptRecord> = {};
+  for (const [day, attempt] of Object.entries(snapshot.quizAttempts)) {
+    quizAttempts[dayToLessonId(Number(day))] = attempt;
+  }
+  return {
+    completedDays: snapshot.completedDays,
+    completedExercises: snapshot.completedExercises.map(dayToLessonId),
+    completedCaseStudies: snapshot.completedCaseStudies.map(dayToLessonId),
+    quizAttempts,
+    xp: snapshot.xp,
+    streak: snapshot.streak,
+    unlockedAchievements: snapshot.unlockedAchievements,
+    finalProjectCompleted: snapshot.finalProjectCompleted,
+    reflections: snapshot.reflections,
+  };
+}
+
+/** POSTs a progress mutation to the server and reconciles local state with the authoritative
+ * response. Network/DB failures are caught and surfaced as `syncStatus: "error"` rather than
+ * thrown, so one failed request never crashes the app - the optimistic local update (already
+ * applied by the caller) stands until the next successful sync. */
+async function syncToServer(
+  set: (partial: Partial<ProgressState>) => void,
+  body: Record<string, unknown>
+) {
+  set({ syncStatus: "saving" });
+  try {
+    const res = await fetch("/api/progress", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Sync failed (${res.status})`);
+    const snapshot: ServerProgressSnapshot = await res.json();
+    set({ ...applySnapshot(snapshot), syncStatus: "saved" });
+  } catch {
+    set({ syncStatus: typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "error" });
+  }
 }
 
 export const useProgressStore = create<ProgressState>()(
@@ -48,6 +119,8 @@ export const useProgressStore = create<ProgressState>()(
       unlockedAchievements: [],
       finalProjectCompleted: false,
       reflections: {},
+      syncStatus: "idle",
+      hydrated: false,
 
       completeDay: (day: number) => {
         const state = get();
@@ -62,6 +135,7 @@ export const useProgressStore = create<ProgressState>()(
           xp: newXp,
           unlockedAchievements: Array.from(new Set([...state.unlockedAchievements, ...unlocked])),
         });
+        void syncToServer(set, { action: "completeDay", day });
       },
 
       completeExercise: (lessonId: string) => {
@@ -71,6 +145,8 @@ export const useProgressStore = create<ProgressState>()(
           completedExercises: [...state.completedExercises, lessonId],
           xp: state.xp + xpForEvent("exercise"),
         });
+        const day = lessonIdToDay(lessonId);
+        if (day !== null) void syncToServer(set, { action: "completeExercise", day });
       },
 
       completeCaseStudy: (lessonId: string) => {
@@ -80,6 +156,8 @@ export const useProgressStore = create<ProgressState>()(
           completedCaseStudies: [...state.completedCaseStudies, lessonId],
           xp: state.xp + xpForEvent("caseStudy"),
         });
+        const day = lessonIdToDay(lessonId);
+        if (day !== null) void syncToServer(set, { action: "completeCaseStudy", day });
       },
 
       submitQuiz: (lessonId: string, answers: QuizAnswer[]) => {
@@ -93,6 +171,8 @@ export const useProgressStore = create<ProgressState>()(
           },
           xp: alreadyAttempted ? state.xp : state.xp + result.xpEarned,
         });
+        const day = lessonIdToDay(lessonId);
+        if (day !== null) void syncToServer(set, { action: "submitQuiz", day, answers });
         return result;
       },
 
@@ -100,11 +180,13 @@ export const useProgressStore = create<ProgressState>()(
         const state = get();
         if (state.finalProjectCompleted) return;
         set({ finalProjectCompleted: true, xp: state.xp + xpForEvent("finalProject") });
+        void syncToServer(set, { action: "completeFinalProject" });
       },
 
       saveReflection: (lessonId: string, learned: string, application: string) => {
         const state = get();
         set({ reflections: { ...state.reflections, [lessonId]: { learned, application } } });
+        void syncToServer(set, { action: "saveReflection", lessonId, learned, application });
       },
 
       isDayCompleted: (day: number) => get().completedDays.includes(day),
@@ -112,6 +194,23 @@ export const useProgressStore = create<ProgressState>()(
       isDayUnlocked: (day: number) => {
         if (day <= 1) return true;
         return get().completedDays.includes(day - 1) || get().completedDays.includes(day);
+      },
+
+      hydrateFromServer: (snapshot: ServerProgressSnapshot) => {
+        set({ ...applySnapshot(snapshot), hydrated: true, syncStatus: "saved" });
+      },
+
+      retrySync: () => {
+        set({ syncStatus: "saving" });
+        void fetch("/api/progress")
+          .then(async (res) => {
+            if (!res.ok) throw new Error(`Fetch failed (${res.status})`);
+            const snapshot: ServerProgressSnapshot = await res.json();
+            set({ ...applySnapshot(snapshot), syncStatus: "saved" });
+          })
+          .catch(() => {
+            set({ syncStatus: typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "error" });
+          });
       },
     }),
     { name: "business-school-progress" }

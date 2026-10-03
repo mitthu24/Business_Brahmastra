@@ -19,4 +19,5 @@ export const navItems: NavItem[] = [
   { href: "/journal", label: "Founder Journal", icon: "NotebookPen" },
   { href: "/achievements", label: "Achievements", icon: "Trophy" },
   { href: "/final-project", label: "Final Project", icon: "GraduationCap" },
+  { href: "/account", label: "Account", icon: "User" },
 ];

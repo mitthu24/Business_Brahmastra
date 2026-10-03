@@ -1,32 +1,87 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { wizardSteps, emptyWizardAnswers, isWizardComplete, completionPercent, type WizardAnswers } from "@/lib/final-project";
-import { useLocalStorageState } from "@/lib/use-local-storage-state";
 import { useProgressStore } from "@/lib/progress/store";
 import { Icon } from "@/components/nav/Icon";
 
+type LoadState = "loading" | "ready" | "error";
+type SaveState = "idle" | "saving" | "saved" | "error";
+
+async function saveStep(stepNumber: number, content: string, complete: boolean): Promise<boolean> {
+  try {
+    const res = await fetch("/api/final-project", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stepNumber, content, complete }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export function WizardView() {
-  const [answers, setAnswers] = useLocalStorageState<WizardAnswers>("final-project-answers", emptyWizardAnswers());
+  const [answers, setAnswers] = useState<WizardAnswers>(emptyWizardAnswers());
+  const [loadState, setLoadState] = useState<LoadState>("loading");
+  const [saveState, setSaveState] = useState<SaveState>("idle");
   const [currentStep, setCurrentStep] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
   const completeFinalProject = useProgressStore((s) => s.completeFinalProject);
   const finalProjectCompleted = useProgressStore((s) => s.finalProjectCompleted);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  async function load() {
+    setLoadState("loading");
+    try {
+      const res = await fetch("/api/final-project");
+      if (!res.ok) throw new Error();
+      const data: { answers: WizardAnswers } = await res.json();
+      setAnswers({ ...emptyWizardAnswers(), ...data.answers });
+      setLoadState("ready");
+    } catch {
+      setLoadState("error");
+    }
+  }
+
+  useEffect(() => {
+    // One-time fetch on mount from an external source (the API) - not a React state sync.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, []);
 
   const step = wizardSteps[currentStep];
   const percent = completionPercent(answers);
 
   function update(value: string) {
     setAnswers((prev) => ({ ...prev, [step.id]: value }));
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    setSaveState("saving");
+    saveTimer.current = setTimeout(async () => {
+      const ok = await saveStep(step.stepNumber, value, false);
+      setSaveState(ok ? "saved" : "error");
+    }, 600);
   }
 
-  function next() {
+  async function flushCurrentStep() {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    setSaveState("saving");
+    const ok = await saveStep(step.stepNumber, answers[step.id] ?? "", false);
+    setSaveState(ok ? "saved" : "error");
+  }
+
+  async function next() {
+    await flushCurrentStep();
     if (currentStep < wizardSteps.length - 1) {
       setCurrentStep((s) => s + 1);
     } else {
       setShowSummary(true);
       if (isWizardComplete(answers) && !finalProjectCompleted) {
-        completeFinalProject();
+        completeFinalProject(); // updates XP/achievement state (already idempotent server-side)
+        await saveStep(step.stepNumber, answers[step.id] ?? "", true);
       }
     }
   }
@@ -37,6 +92,20 @@ export function WizardView() {
       return;
     }
     setCurrentStep((s) => Math.max(0, s - 1));
+  }
+
+  if (loadState === "loading") {
+    return <p className="text-sm text-muted">Loading your business plan…</p>;
+  }
+  if (loadState === "error") {
+    return (
+      <div className="card p-4 flex items-center justify-between gap-3 max-w-2xl">
+        <p className="text-sm text-danger">Couldn&apos;t load your final project.</p>
+        <button onClick={load} className="text-xs rounded-lg border border-border px-3 py-1.5 hover:text-foreground">
+          Retry
+        </button>
+      </div>
+    );
   }
 
   if (showSummary) {
@@ -69,7 +138,10 @@ export function WizardView() {
       </div>
 
       <div className="card p-6 max-w-2xl">
-        <div className="text-xs text-muted mb-1">STEP {step.stepNumber} OF {wizardSteps.length}</div>
+        <div className="flex items-center justify-between mb-1">
+          <div className="text-xs text-muted">STEP {step.stepNumber} OF {wizardSteps.length}</div>
+          <SaveIndicator state={saveState} />
+        </div>
         <h2 id={`wizard-step-${step.id}`} className="text-xl font-semibold mb-3">{step.title}</h2>
         <p id={`wizard-prompt-${step.id}`} className="text-sm text-muted mb-4">{step.prompt}</p>
         <textarea
@@ -95,6 +167,13 @@ export function WizardView() {
       </div>
     </div>
   );
+}
+
+function SaveIndicator({ state }: { state: SaveState }) {
+  if (state === "saving") return <span className="text-xs text-muted">Saving…</span>;
+  if (state === "saved") return <span className="text-xs text-success">Saved</span>;
+  if (state === "error") return <span className="text-xs text-danger">Save failed, will retry</span>;
+  return null;
 }
 
 function SummaryView({ answers, onBack }: { answers: WizardAnswers; onBack: () => void }) {

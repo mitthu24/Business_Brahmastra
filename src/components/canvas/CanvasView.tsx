@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useLocalStorageState } from "@/lib/use-local-storage-state";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/nav/Icon";
 
 interface CanvasBlock {
@@ -24,23 +23,75 @@ const blocks: CanvasBlock[] = [
 ];
 
 type CanvasState = Record<string, string>;
+type SaveState = "loading" | "idle" | "saving" | "saved" | "error";
 
 const initial: CanvasState = Object.fromEntries(blocks.map((b) => [b.id, ""]));
 
 export function CanvasView() {
-  const [canvas, setCanvas] = useLocalStorageState<CanvasState>("business-model-canvas", initial);
+  const [canvas, setCanvas] = useState<CanvasState>(initial);
   const [compact, setCompact] = useState(false);
+  const [saveState, setSaveState] = useState<SaveState>("loading");
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingRef = useRef<CanvasState | null>(null);
+
+  async function load() {
+    setSaveState("loading");
+    try {
+      const res = await fetch("/api/canvas");
+      if (!res.ok) throw new Error();
+      const data: CanvasState = await res.json();
+      setCanvas({ ...initial, ...data });
+      setSaveState("idle");
+    } catch {
+      setSaveState("error");
+    }
+  }
+
+  useEffect(() => {
+    // One-time fetch on mount from an external source (the API) - not a React state sync.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, []);
+
+  function scheduleSave(next: CanvasState) {
+    pendingRef.current = next;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      const toSave = pendingRef.current;
+      if (!toSave) return;
+      setSaveState("saving");
+      try {
+        const res = await fetch("/api/canvas", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(toSave),
+        });
+        if (!res.ok) throw new Error();
+        setSaveState("saved");
+      } catch {
+        setSaveState("error");
+      }
+    }, 600); // debounced autosave
+  }
 
   function update(id: string, value: string) {
-    setCanvas((prev) => ({ ...prev, [id]: value }));
+    setCanvas((prev) => {
+      const next = { ...prev, [id]: value };
+      scheduleSave(next);
+      return next;
+    });
   }
 
   function clearBlock(id: string) {
-    setCanvas((prev) => ({ ...prev, [id]: "" }));
+    update(id, "");
   }
 
   function clearAll() {
     setCanvas(initial);
+    scheduleSave(initial);
   }
 
   const filledCount = blocks.filter((b) => (canvas[b.id] ?? "").trim()).length;
@@ -49,7 +100,8 @@ export function CanvasView() {
     <div>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <p className="text-xs text-muted">{filledCount}/{blocks.length} blocks filled</p>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          <SaveIndicator state={saveState} onRetry={load} />
           <button
             onClick={() => setCompact((c) => !c)}
             className="flex items-center gap-1.5 text-sm text-muted hover:text-foreground border border-border rounded-lg px-3 py-1.5"
@@ -96,7 +148,20 @@ export function CanvasView() {
           ))}
         </div>
       )}
-      <p className="text-xs text-muted mt-4">Saved automatically to this browser.</p>
+      <p className="text-xs text-muted mt-4">Saved automatically to your account.</p>
     </div>
   );
+}
+
+function SaveIndicator({ state, onRetry }: { state: SaveState; onRetry: () => void }) {
+  if (state === "loading") return <span className="text-xs text-muted">Loading…</span>;
+  if (state === "saving") return <span className="text-xs text-muted">Saving…</span>;
+  if (state === "error")
+    return (
+      <button onClick={onRetry} className="text-xs text-danger hover:underline">
+        Sync failed · Retry
+      </button>
+    );
+  if (state === "saved") return <span className="text-xs text-success">Saved</span>;
+  return null;
 }
