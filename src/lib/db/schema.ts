@@ -1,4 +1,5 @@
-import { pgTable, text, integer, boolean, timestamp, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, text, integer, boolean, timestamp, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 function id() {
   return text("id")
@@ -6,13 +7,37 @@ function id() {
     .$defaultFn(() => crypto.randomUUID());
 }
 
+export const userRoleEnum = pgEnum("user_role", ["user", "founder"]);
+
+/**
+ * Phase 5 access fields (see docs/PHASE-5.md "Access-state model"):
+ * - `role` distinguishes founder accounts from regular learners. Checked server-side on every
+ *   founder route/action - never trusted from the client.
+ * - `trialStartedAt`/`trialEndsAt` are set once, server-side, at signup (never from the client or
+ *   browser clock) and are the sole basis for the TRIAL/EXPIRED boundary.
+ * - `accessActivatedAt` presence means a founder has granted this user standing ACTIVE access
+ *   (bypasses trial expiry). `suspendedAt` presence means a founder has revoked access; it is
+ *   checked first so it always wins over an activated or still-trialing account.
+ * Access status itself is never stored - it's derived on every read by
+ * src/lib/access/status.ts#computeAccessStatus, so there is nothing to go stale.
+ */
 export const users = pgTable("users", {
   id: id(),
   email: text("email").notNull(),
   passwordHash: text("password_hash").notNull(),
+  role: userRoleEnum("role").notNull().default("user"),
+  trialStartedAt: timestamp("trial_started_at", { withTimezone: true }).notNull().defaultNow(),
+  trialEndsAt: timestamp("trial_ends_at", { withTimezone: true })
+    .notNull()
+    .default(sql`(now() + interval '3 days')`),
+  accessActivatedAt: timestamp("access_activated_at", { withTimezone: true }),
+  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [uniqueIndex("users_email_unique").on(t.email)]);
+}, (t) => [
+  uniqueIndex("users_email_unique").on(t.email),
+  index("users_role_idx").on(t.role),
+]);
 
 export const userProfiles = pgTable("user_profiles", {
   id: id(),

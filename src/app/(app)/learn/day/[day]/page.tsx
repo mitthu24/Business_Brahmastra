@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { requireLearnerOrRedirect } from "@/lib/auth/dal";
+import { hasProtectedAccess } from "@/lib/access/status";
+import { AccessExpiredNotice } from "@/components/access/AccessExpiredNotice";
 import { allLessons, getLessonByDay, TOTAL_DAYS } from "@/lib/content/lessons";
 import { getPhaseForDay } from "@/lib/content/phases";
 import { LessonInteractive } from "@/components/lesson/LessonInteractive";
@@ -27,6 +30,18 @@ export default async function LessonPage({ params }: { params: Promise<{ day: st
   const dayNum = Number(day);
   const lesson = getLessonByDay(dayNum);
   if (!lesson || !Number.isInteger(dayNum) || dayNum < 1 || dayNum > TOTAL_DAYS) notFound();
+
+  // Server-side lesson access check (docs/PHASE-5.md "Lesson access"): authentication is already
+  // enforced by the (app) layout, but lesson *content* additionally requires live access status -
+  // never just a frontend route guard.
+  const { status } = await requireLearnerOrRedirect();
+  if (!hasProtectedAccess(status)) {
+    return (
+      <div className="max-w-3xl">
+        <AccessExpiredNotice status={status as "EXPIRED" | "SUSPENDED"} />
+      </div>
+    );
+  }
 
   const phase = getPhaseForDay(lesson.day);
   const diagram = getLessonDiagram(lesson.day);

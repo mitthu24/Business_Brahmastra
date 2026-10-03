@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireUserForApi } from "@/lib/auth/dal";
+import { requireUserForApi, requireActiveAccessForApi } from "@/lib/auth/dal";
 import { getDb } from "@/lib/db/client";
 import { getFinalProjectAnswers, saveFinalProjectStep } from "@/lib/db/final-project-queries";
 import { wizardSteps } from "@/lib/final-project";
@@ -28,8 +28,11 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  const session = await requireUserForApi();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const access = await requireActiveAccessForApi();
+  if (!access.ok) {
+    if (access.code === "UNAUTHENTICATED") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Your access has ended.", accessStatus: access.status }, { status: 403 });
+  }
 
   const json = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
@@ -37,9 +40,9 @@ export async function PUT(request: Request) {
 
   try {
     const db = getDb();
-    const data = await saveFinalProjectStep(db, session.userId, parsed.data.stepNumber, parsed.data.content);
+    const data = await saveFinalProjectStep(db, access.userId, parsed.data.stepNumber, parsed.data.content);
     if (parsed.data.complete) {
-      await completeFinalProjectTx(db, session.userId);
+      await completeFinalProjectTx(db, access.userId);
     }
     return NextResponse.json(data);
   } catch {

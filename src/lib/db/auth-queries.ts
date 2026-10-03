@@ -3,6 +3,7 @@ import { eq, and, isNull, gt } from "drizzle-orm";
 import type { Database } from "./types";
 import { users, userProfiles, sessions, passwordResetTokens } from "./schema";
 import { hashToken, generateToken } from "@/lib/auth/tokens";
+import { TRIAL_DURATION_MS } from "@/lib/access/status";
 
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 export const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -22,9 +23,14 @@ export async function createUser(
   input: { email: string; passwordHash: string; name: string }
 ) {
   return db.transaction(async (tx) => {
+    // Trial window is computed from the server clock at the moment of signup, never the browser's
+    // - see docs/PHASE-5.md "3-day trial". The column defaults mirror this for safety, but setting
+    // it explicitly here means the exact instant is always known and auditable from app code too.
+    const trialStartedAt = new Date();
+    const trialEndsAt = new Date(trialStartedAt.getTime() + TRIAL_DURATION_MS);
     const [user] = await tx
       .insert(users)
-      .values({ email: input.email, passwordHash: input.passwordHash })
+      .values({ email: input.email, passwordHash: input.passwordHash, trialStartedAt, trialEndsAt })
       .returning();
     const initials = initialsFromName(input.name);
     await tx.insert(userProfiles).values({ userId: user.id, name: input.name, avatarInitials: initials });
@@ -72,6 +78,12 @@ export async function getUserBySessionToken(db: Database, rawToken: string) {
 
 export async function deleteSessionByToken(db: Database, rawToken: string) {
   await db.delete(sessions).where(eq(sessions.tokenHash, hashToken(rawToken)));
+}
+
+/** Revokes every session for a user. Used on password change (docs/PHASE-5.md "Account settings")
+ * so a stolen session token on another device is invalidated the moment the password is changed. */
+export async function deleteAllSessionsForUser(db: Database, userId: string) {
+  await db.delete(sessions).where(eq(sessions.userId, userId));
 }
 
 export async function createPasswordResetToken(db: Database, userId: string): Promise<string> {

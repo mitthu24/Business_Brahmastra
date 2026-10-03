@@ -10,6 +10,7 @@ import {
   createPasswordResetToken,
   consumePasswordResetToken,
   findUserById,
+  deleteAllSessionsForUser,
 } from "@/lib/db/auth-queries";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSessionCookie, clearSessionCookie } from "@/lib/auth/session";
@@ -153,5 +154,9 @@ export async function changePassword(_prev: FormState, formData: FormData): Prom
 
   const passwordHash = await hashPassword(parsed.data.newPassword);
   await updateUserPassword(db, session.userId, passwordHash);
-  return { success: "Password updated." };
+  // Revoke every session (including this one) then issue a fresh one for the current browser, so
+  // a session token leaked elsewhere stops working the instant the password changes.
+  await deleteAllSessionsForUser(db, session.userId);
+  await createSessionCookie(session.userId);
+  return { success: "Password updated. You've been signed out of other devices." };
 }

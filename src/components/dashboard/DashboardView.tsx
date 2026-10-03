@@ -7,8 +7,16 @@ import { TOTAL_DAYS, getLessonByDay } from "@/lib/content/lessons";
 import { achievements } from "@/lib/progress/achievements";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { TrialBanner } from "@/components/access/TrialBanner";
+import { hasProtectedAccess, type AccessInfo } from "@/lib/access/status";
 
-export function DashboardView() {
+export function DashboardView({
+  userName,
+  access,
+}: {
+  userName: string | null;
+  access: AccessInfo | null;
+}) {
   const completedDays = useProgressStore((s) => s.completedDays);
   const completedExercises = useProgressStore((s) => s.completedExercises);
   const quizAttempts = useProgressStore((s) => s.quizAttempts);
@@ -31,10 +39,15 @@ export function DashboardView() {
     completedDays.includes(d)
   ).length;
 
+  const canLearn = access ? hasProtectedAccess(access.status) : true;
+  const displayName = userName ?? "Founder";
+
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-1">Good day, Founder 👋</h1>
+      <h1 className="text-2xl font-bold mb-1">Good day, {displayName} 👋</h1>
       <p className="text-muted mb-6">Here&apos;s where you stand in your 90-day journey.</p>
+
+      {access && <TrialBanner access={access} />}
 
       <div className="card p-6 mb-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:justify-between">
         <div>
@@ -42,9 +55,15 @@ export function DashboardView() {
           <div className="text-2xl font-bold">Day {currentDay}{currentLesson ? `: ${currentLesson.title}` : ""}</div>
           <div className="text-sm text-muted mt-1">Phase: {currentPhase.title}</div>
         </div>
-        <Link href={`/learn/day/${currentDay}`} className="rounded-lg bg-primary text-primary-foreground px-5 py-2.5 font-medium hover:opacity-90 transition-opacity whitespace-nowrap">
-          Continue Learning →
-        </Link>
+        {canLearn ? (
+          <Link href={`/learn/day/${currentDay}`} className="rounded-lg bg-primary text-primary-foreground px-5 py-2.5 font-medium hover:opacity-90 transition-opacity whitespace-nowrap">
+            Continue Learning →
+          </Link>
+        ) : (
+          <Link href="/account" className="rounded-lg border border-border px-5 py-2.5 font-medium hover:bg-bg-elevated transition-colors whitespace-nowrap">
+            View access status
+          </Link>
+        )}
       </div>
 
       <div className="mb-6">

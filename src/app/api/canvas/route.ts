@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireUserForApi } from "@/lib/auth/dal";
+import { requireUserForApi, requireActiveAccessForApi } from "@/lib/auth/dal";
 import { getDb } from "@/lib/db/client";
 import { getCanvas, upsertCanvas, CANVAS_BLOCK_IDS } from "@/lib/db/canvas-queries";
 
@@ -22,15 +22,18 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  const session = await requireUserForApi();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const access = await requireActiveAccessForApi();
+  if (!access.ok) {
+    if (access.code === "UNAUTHENTICATED") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Your access has ended.", accessStatus: access.status }, { status: 403 });
+  }
 
   const json = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
 
   try {
-    const canvas = await upsertCanvas(getDb(), session.userId, parsed.data);
+    const canvas = await upsertCanvas(getDb(), access.userId, parsed.data);
     return NextResponse.json(canvas);
   } catch {
     return NextResponse.json({ error: "Database unavailable" }, { status: 503 });

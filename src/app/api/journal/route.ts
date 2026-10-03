@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireUserForApi } from "@/lib/auth/dal";
+import { requireUserForApi, requireActiveAccessForApi } from "@/lib/auth/dal";
 import { getDb } from "@/lib/db/client";
 import { listJournalEntries, createJournalEntryRow } from "@/lib/db/journal-queries";
 import { journalCategories, type JournalCategory } from "@/lib/journal";
@@ -27,15 +27,18 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await requireUserForApi();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const access = await requireActiveAccessForApi();
+  if (!access.ok) {
+    if (access.code === "UNAUTHENTICATED") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Your access has ended.", accessStatus: access.status }, { status: 403 });
+  }
 
   const json = await request.json().catch(() => null);
   const parsed = createSchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
 
   try {
-    const entry = await createJournalEntryRow(getDb(), session.userId, parsed.data.category, parsed.data.text);
+    const entry = await createJournalEntryRow(getDb(), access.userId, parsed.data.category, parsed.data.text);
     return NextResponse.json(entry, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Database unavailable" }, { status: 503 });

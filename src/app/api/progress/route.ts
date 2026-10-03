@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireUserForApi } from "@/lib/auth/dal";
+import { requireUserForApi, requireActiveAccessForApi } from "@/lib/auth/dal";
 import { getDb } from "@/lib/db/client";
 import {
   getProgressSnapshot,
@@ -47,8 +47,13 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await requireUserForApi();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Completing a lesson/exercise/quiz/reflection/final-project step is a protected learning
+  // action, so it is gated on live access status (not just authentication) - see docs/PHASE-5.md.
+  const access = await requireActiveAccessForApi();
+  if (!access.ok) {
+    if (access.code === "UNAUTHENTICATED") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Your access has ended.", accessStatus: access.status }, { status: 403 });
+  }
 
   const json = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
@@ -57,7 +62,7 @@ export async function POST(request: Request) {
   }
 
   const db = getDb();
-  const { userId } = session;
+  const userId = access.userId;
 
   try {
     const body = parsed.data;
