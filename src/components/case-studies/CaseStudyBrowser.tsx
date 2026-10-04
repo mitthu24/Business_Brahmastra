@@ -57,7 +57,7 @@ export function CaseStudyBrowser({ items }: { items: CaseStudyEntry[] }) {
                 {cs.factType === "documented" ? "Documented fact" : "Illustrative analysis"}
               </span>
             </div>
-            <dl className="grid sm:grid-cols-2 gap-4 text-sm">
+            <dl className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
               <Field label="Problem" value={cs.problem} />
               <Field label="Solution" value={cs.solution} />
               <Field label="Customer" value={cs.customer} />

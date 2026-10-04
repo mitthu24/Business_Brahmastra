@@ -18,7 +18,7 @@ export default function FormulasPage() {
           return (
             <section key={cat}>
               <h2 className="text-lg font-semibold mb-4">{cat}</h2>
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {items.map((f) => (
                   <div key={f.id} id={f.id} className="card p-5 scroll-mt-20">
                     <h3 className="font-medium mb-2">{f.name}</h3>

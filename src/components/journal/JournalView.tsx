@@ -146,7 +146,13 @@ export function JournalView() {
         )}
         {loadState === "ready" && (
           <div className="space-y-3">
-            {filteredEntries.length === 0 && <p className="text-sm text-muted">No entries yet.</p>}
+            {filteredEntries.length === 0 && (
+              <div className="card p-8 text-center">
+                <Icon name="NotebookPen" size={28} className="text-muted mx-auto mb-3" />
+                <p className="text-sm font-medium">No entries yet</p>
+                <p className="text-xs text-muted mt-1">Write down your first idea, observation, or lesson above.</p>
+              </div>
+            )}
             {filteredEntries.map((e) => (
               <div key={e.id} className="card p-4">
                 <div className="flex items-center justify-between mb-1.5">
@@ -168,7 +174,13 @@ export function JournalView() {
       <div>
         <h2 className="text-sm font-semibold text-muted mb-3">LESSON REFLECTIONS ({reflectionEntries.length})</h2>
         <div className="space-y-3">
-          {reflectionEntries.length === 0 && <p className="text-sm text-muted">Reflections you save at the end of each lesson will appear here.</p>}
+          {reflectionEntries.length === 0 && (
+            <div className="card p-8 text-center">
+              <Icon name="Sparkles" size={28} className="text-muted mx-auto mb-3" />
+              <p className="text-sm font-medium">No reflections yet</p>
+              <p className="text-xs text-muted mt-1">Reflections you save at the end of each lesson will appear here.</p>
+            </div>
+          )}
           {reflectionEntries.map(([lessonId, r]) => {
             const dayMatch = lessonId.match(/day-(\d+)/);
             const lesson = dayMatch ? getLessonByDay(Number(dayMatch[1])) : undefined;

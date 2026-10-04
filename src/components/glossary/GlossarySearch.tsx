@@ -37,7 +37,7 @@ export function GlossarySearch({ terms }: { terms: GlossaryEntry[] }) {
         {grouped.map(([letter, items]) => (
           <section key={letter}>
             <h2 className="text-sm font-semibold text-muted mb-2">{letter}</h2>
-            <div className="grid sm:grid-cols-2 gap-2">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {items.map((t) => (
                 <Link key={t.slug} href={`/glossary/${t.slug}`} className="card p-3 hover:border-primary/50 transition-colors">
                   <div className="font-medium text-sm">{t.term}</div>
