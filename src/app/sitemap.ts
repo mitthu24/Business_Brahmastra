@@ -7,6 +7,13 @@ const BASE_URL = "https://example.com";
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticRoutes = [
     "",
+    "/features",
+    "/pricing",
+    "/about",
+    "/contact",
+    "/faq",
+    "/privacy",
+    "/terms",
     "/roadmap",
     "/dashboard",
     "/progress",
