@@ -26,7 +26,7 @@ const calculatorResults: SearchResult[] = [
   { id: "calc-dilution", title: "Dilution Calculator", category: "Calculator", description: "Calculate founder dilution after a funding round.", href: "/calculators/dilution" },
 ];
 
-export function buildSearchIndex(): SearchResult[] {
+function buildSearchIndex(): SearchResult[] {
   const lessonResults: SearchResult[] = allLessons.map((l) => ({
     id: `lesson-${l.day}`,
     title: `Day ${l.day}: ${l.title}`,
@@ -61,6 +61,17 @@ export function buildSearchIndex(): SearchResult[] {
 
   return [...lessonResults, ...glossaryResults, ...formulaResults, ...caseStudyResults, ...calculatorResults];
 }
+
+/**
+ * Built once, at module load, instead of once per GlobalSearch mount (Phase 5.5.2 performance
+ * pass). Every input here (lessons/glossary/formulas/case studies) is a static import that never
+ * changes at runtime, so a `useMemo(() => buildSearchIndex(), [])` inside the component still
+ * reran this on every single mount - including every time AppShell remounts crossing between the
+ * (app) and (public) route groups (see ProgressBootstrap.tsx for the same pattern). The work
+ * itself was never expensive (~300 plain objects, no DB/network), so this is a small, genuinely
+ * free simplification, not a fix for a measured bottleneck.
+ */
+export const searchIndexData: SearchResult[] = buildSearchIndex();
 
 export function searchIndex(query: string, index: SearchResult[]): SearchResult[] {
   const q = query.trim().toLowerCase();

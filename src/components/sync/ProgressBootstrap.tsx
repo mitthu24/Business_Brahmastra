@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useProgressStore, type ServerProgressSnapshot } from "@/lib/progress/store";
 
 const MIGRATION_FLAG_KEY = "bb-cloud-migration-complete";
@@ -28,6 +28,17 @@ function buildLocalSnapshot() {
   return { progress, journal, canvas, finalProjectAnswers };
 }
 
+// Module-level, not component state (Phase 5.5.2 performance fix): AppShell - and therefore this
+// component - mounts separately in the (app) layout and the (public) layout, so navigating
+// between e.g. /dashboard and /roadmap unmounts and remounts it. A `useRef` guard resets on every
+// such remount, which was silently refiring the full migration-check + GET /api/progress network
+// round trip on every single crossing between the two route groups - a real, unnecessary DB hit
+// each time, even though the Zustand store (a module-level singleton, unaffected by component
+// remounts) already held perfectly valid, already-hydrated data. A plain module-level flag is a
+// real per-browser-session guard (reset only by an actual full page load/new tab, matching what
+// this component's own "runs once per browser" contract always claimed), not a per-mount one.
+let hasBootstrappedThisSession = false;
+
 /** Runs once per browser, right after the protected app shell mounts (i.e. right after
  * signup/login): migrates any pre-existing localStorage progress to the cloud exactly once
  * (server-side idempotency guards this even if the client flag is somehow lost - see
@@ -35,11 +46,10 @@ function buildLocalSnapshot() {
  * single source of truth from this point on. Renders nothing. */
 export function ProgressBootstrap() {
   const hydrateFromServer = useProgressStore((s) => s.hydrateFromServer);
-  const ran = useRef(false);
 
   useEffect(() => {
-    if (ran.current) return;
-    ran.current = true;
+    if (hasBootstrappedThisSession) return;
+    hasBootstrappedThisSession = true;
 
     (async () => {
       try {

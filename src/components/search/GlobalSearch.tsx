@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { buildSearchIndex, searchIndex, type SearchResult } from "@/lib/search-index";
+import { searchIndexData, searchIndex, type SearchResult } from "@/lib/search-index";
 import { Icon } from "@/components/nav/Icon";
 
 const categoryIcon: Record<SearchResult["category"], string> = {
@@ -22,8 +22,7 @@ export function GlobalSearch() {
   const inputRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
-  const index = useMemo(() => buildSearchIndex(), []);
-  const results = useMemo(() => searchIndex(query, index), [query, index]);
+  const results = useMemo(() => searchIndex(query, searchIndexData), [query]);
 
   const grouped = useMemo(() => {
     const indexed = results.map((r, flatIndex) => ({ ...r, flatIndex }));
