@@ -7,6 +7,7 @@ import { ContentStatusBadge } from "@/components/founder/ContentStatusBadge";
 import { ContentStatusActions } from "@/components/founder/ContentStatusActions";
 import { setLessonStatusAction } from "../../../lesson-actions";
 import { EditLessonForm } from "./EditLessonForm";
+import { DuplicateLessonForm } from "./DuplicateLessonForm";
 
 export const metadata: Metadata = { title: "Founder · Edit lesson" };
 export const dynamic = "force-dynamic";
@@ -27,6 +28,7 @@ export default async function FounderLessonEditPage({ params }: { params: Promis
         <Link href={`/founder/lessons/${lesson.id}/preview`} className="text-xs rounded-md border border-border px-2 py-1 hover:bg-bg-elevated transition-colors">
           Preview as learner
         </Link>
+        <DuplicateLessonForm lessonId={lesson.id} />
       </div>
 
       <EditLessonForm lesson={lesson} />

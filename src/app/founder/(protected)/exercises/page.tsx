@@ -72,6 +72,7 @@ export default async function FounderExercisesPage({
                       id={l.id}
                       status={l.exerciseStatus as ContentStatus}
                       setStatus={setExerciseStatusAction}
+                      editHref={`/founder/exercises/${l.id}`}
                     />
                   </td>
                 </tr>

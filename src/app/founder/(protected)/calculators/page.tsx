@@ -71,7 +71,7 @@ export default async function FounderCalculatorsPage({
                   <td className="py-2.5 px-4 text-muted">{c.category}</td>
                   <td className="py-2.5 px-4"><ContentStatusBadge status={c.status} /></td>
                   <td className="py-2.5 px-4">
-                    <ContentStatusActions id={c.id} status={c.status} setStatus={setCalculatorStatusAction} />
+                    <ContentStatusActions id={c.id} status={c.status} setStatus={setCalculatorStatusAction} editHref={`/founder/calculators/${c.id}`} />
                   </td>
                 </tr>
               ))}

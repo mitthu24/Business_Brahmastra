@@ -77,7 +77,7 @@ export default async function FounderCaseStudiesPage({
                     <ContentStatusBadge status={c.status} />
                   </td>
                   <td className="py-2.5 px-4">
-                    <ContentStatusActions id={c.id} status={c.status} setStatus={setCaseStudyStatusAction} />
+                    <ContentStatusActions id={c.id} status={c.status} setStatus={setCaseStudyStatusAction} editHref={`/founder/case-studies/${c.id}`} />
                   </td>
                 </tr>
               ))}

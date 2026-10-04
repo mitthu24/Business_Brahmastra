@@ -77,7 +77,7 @@ export default async function FounderFormulasPage({
                     <ContentStatusBadge status={f.status} />
                   </td>
                   <td className="py-2.5 px-4">
-                    <ContentStatusActions id={f.id} status={f.status} setStatus={setFormulaStatusAction} />
+                    <ContentStatusActions id={f.id} status={f.status} setStatus={setFormulaStatusAction} editHref={`/founder/formulas/${f.id}`} />
                   </td>
                 </tr>
               ))}

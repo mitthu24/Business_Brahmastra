@@ -77,7 +77,7 @@ export default async function FounderGlossaryPage({
                   </td>
                   <td className="py-2.5 px-4 text-muted whitespace-nowrap">{e.updatedAt.toLocaleDateString()}</td>
                   <td className="py-2.5 px-4">
-                    <ContentStatusActions id={e.id} status={e.status} setStatus={setGlossaryStatusAction} />
+                    <ContentStatusActions id={e.id} status={e.status} setStatus={setGlossaryStatusAction} editHref={`/founder/glossary/${e.id}`} />
                   </td>
                 </tr>
               ))}

@@ -191,6 +191,76 @@ export async function updateLessonAction(id: string, _prev: FormState, formData:
   return { success: "Saved." };
 }
 
+/** Copies every learner-visible field from an existing lesson onto a NEW target day (1-90, not
+ * already in use) as a fresh draft. The source lesson's own day/identity is never touched -
+ * duplicating never reassigns or frees up a day number, so lesson_completions and the other
+ * progress tables keyed by day are unaffected (docs/PHASE-5.3.md "Lesson CMS" > "Duplicate
+ * Lesson": "must not duplicate its canonical day number"). The duplicate's slug is derived from
+ * the new day so it can never collide with the source's slug. */
+export async function duplicateLessonAction(sourceId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const auth = await requireFounder();
+  if ("error" in auth) return { error: auth.error };
+
+  const db = getDb();
+  const source = await getLessonById(db, sourceId);
+  if (!source) return { error: "Source lesson not found." };
+
+  const targetDayRaw = formData.get("targetDay");
+  const targetDay = Number(targetDayRaw);
+  if (!Number.isInteger(targetDay) || targetDay < 1 || targetDay > 90) {
+    return { fieldErrors: { targetDay: ["Choose a valid day number between 1 and 90."] } };
+  }
+  if (targetDay === source.day) {
+    return { fieldErrors: { targetDay: ["Choose a different day than the source lesson."] } };
+  }
+  if (await getLessonByDayNumber(db, targetDay)) {
+    return { fieldErrors: { targetDay: ["Day " + targetDay + " already has a lesson. Choose a day with no lesson yet."] } };
+  }
+
+  const input: LessonInput = {
+    day: targetDay,
+    phaseId: source.phaseId,
+    slug: `${source.slug}-day-${targetDay}`,
+    title: source.title,
+    objective: source.objective,
+    concept: source.concept,
+    simpleExplanation: source.simpleExplanation,
+    analogy: source.analogy,
+    businessExample: source.businessExample,
+    indiaExample: source.indiaExample ?? undefined,
+    startupExample: source.startupExample ?? undefined,
+    formula: source.formula ?? undefined,
+    mnemonic: source.mnemonic ?? undefined,
+    commonMistake: source.commonMistake,
+    exercisePrompt: source.exercisePrompt,
+    exerciseAnswer: source.exerciseAnswer,
+    caseStudy: source.caseStudy,
+    founderQuestion: source.founderQuestion,
+    quiz: source.quiz.map((q, i) => ({ ...q, id: `d${targetDay}q${i + 1}` })),
+    takeaways: source.takeaways,
+    rememberThis: source.rememberThis,
+  };
+
+  let entry;
+  try {
+    entry = await createLesson(db, input, "draft", auth.founderId);
+  } catch (err) {
+    if (isUniqueViolation(err)) return { fieldErrors: { targetDay: ["That day or slug is already in use."] } };
+    throw err;
+  }
+
+  await recordAuditLog(db, {
+    founderId: auth.founderId,
+    action: "CONTENT_CREATED",
+    entityType: "lesson",
+    entityId: entry.id,
+    metadata: { day: entry.day, duplicatedFrom: source.id, duplicatedFromDay: source.day },
+  });
+  revalidatePath("/founder/lessons");
+  revalidatePath("/founder/curriculum");
+  redirect(`/founder/lessons/${entry.id}`);
+}
+
 export async function setLessonStatusAction(id: string, status: ContentStatus): Promise<ActionResult> {
   const auth = await requireFounder();
   if ("error" in auth) return auth;

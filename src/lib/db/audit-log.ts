@@ -16,7 +16,8 @@ export type AuditAction =
   | "CONTENT_UPDATED"
   | "CONTENT_PUBLISHED"
   | "CONTENT_UNPUBLISHED"
-  | "CONTENT_ARCHIVED";
+  | "CONTENT_ARCHIVED"
+  | "SETTINGS_UPDATED";
 
 /** Records one founder action. Never pass passwords, hashes, or tokens in `metadata` - see
  * docs/PHASE-5.3.md "Audit logging". Logging failures never block the underlying action (a missed

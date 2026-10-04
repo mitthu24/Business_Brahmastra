@@ -67,7 +67,7 @@ export default async function FounderQuizzesPage({
                   <td className="py-2.5 px-4 text-muted">{l.quiz.length}</td>
                   <td className="py-2.5 px-4"><ContentStatusBadge status={l.quizStatus} /></td>
                   <td className="py-2.5 px-4">
-                    <ContentStatusActions id={l.id} status={l.quizStatus as ContentStatus} setStatus={setQuizStatusAction} />
+                    <ContentStatusActions id={l.id} status={l.quizStatus as ContentStatus} setStatus={setQuizStatusAction} editHref={`/founder/quizzes/${l.id}`} />
                   </td>
                 </tr>
               ))}

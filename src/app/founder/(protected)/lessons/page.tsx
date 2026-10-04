@@ -87,7 +87,7 @@ export default async function FounderLessonsPage({
                       <Link href={`/founder/lessons/${row.id}/preview`} className="text-xs rounded-md border border-border px-2 py-1 hover:bg-bg-elevated transition-colors">
                         Preview
                       </Link>
-                      <ContentStatusActions id={row.id} status={row.status} setStatus={setLessonStatusAction} />
+                      <ContentStatusActions id={row.id} status={row.status} setStatus={setLessonStatusAction} editHref={`/founder/lessons/${row.id}`} />
                     </div>
                   </td>
                 </tr>

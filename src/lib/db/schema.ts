@@ -409,6 +409,42 @@ export const achievementEntries = pgTable("achievement_entries", {
  * slug (e.g. "profit"), matching src/lib/calculator-meta.ts, not a generated id - there is no
  * "create a new calculator" flow since a new calculator needs real trusted compute code, not data.
  */
+/**
+ * Phase 5.3 Founder Control Center completion: global product settings. A single singleton row
+ * (id is always the literal string "singleton" - enforced in settings-queries.ts, never a second
+ * row) rather than a generic key-value table, since every setting here is a small fixed set of
+ * scalars the founder edits together on one page. `defaultTrialDays` only affects users created
+ * AFTER the change (it is read once at signup into users.trialEndsAt - see schema.ts users table -
+ * and never re-applied to existing rows), so changing it can never silently alter an existing
+ * user's trial. No secrets (DB credentials, env vars, payment keys) are ever stored here.
+ */
+export const productSettings = pgTable("product_settings", {
+  id: text("id").primaryKey().default("singleton"),
+  productName: text("product_name").notNull().default("90-Day Business School"),
+  productDescription: text("product_description").notNull().default(""),
+  logoUrl: text("logo_url"),
+  defaultTrialDays: integer("default_trial_days").notNull().default(3),
+  defaultNewUserAccess: text("default_new_user_access").notNull().default("trial"), // "trial" | "active"
+  defaultContentStatus: contentStatusEnum("default_content_status").notNull().default("draft"),
+  updatedBy: text("updated_by").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Curriculum phase metadata overrides (Phase 5.3 Founder Control Center completion). The 15
+ * phases and their day ranges stay defined in src/lib/content/phases.ts as the canonical source of
+ * the day-range -> phase mapping (90 lessons' day identity must never move), but a founder can
+ * override the DISPLAY name/description here. `id` is the phase number as text ("1".."15"),
+ * matching Phase.number in phases.ts. No row here changes which days belong to which phase.
+ */
+export const curriculumPhaseOverrides = pgTable("curriculum_phase_overrides", {
+  id: text("id").primaryKey(), // phase number as string, e.g. "1"
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  updatedBy: text("updated_by").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const calculatorEntries = pgTable("calculator_entries", {
   id: text("id").primaryKey(), // the existing calculator slug, e.g. "profit"
   title: text("title").notNull(),

@@ -2,18 +2,20 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getDb } from "@/lib/db/client";
 import { listLessons } from "@/lib/db/lesson-queries";
-import { phases } from "@/lib/content/phases";
+import { listPhasesForFounder } from "@/lib/db/settings-queries";
 import { getLessonByDay } from "@/lib/content/lessons";
 import { ContentStatusBadge } from "@/components/founder/ContentStatusBadge";
 import { ContentStatusActions } from "@/components/founder/ContentStatusActions";
 import { setLessonStatusAction } from "../../lesson-actions";
 import type { ContentStatus } from "@/lib/db/content-queries";
+import { PhaseEditForm } from "./PhaseEditForm";
 
 export const metadata: Metadata = { title: "Founder · Curriculum" };
 export const dynamic = "force-dynamic";
 
 export default async function FounderCurriculumPage() {
-  const rows = await listLessons(getDb());
+  const db = getDb();
+  const [rows, phases] = await Promise.all([listLessons(db), listPhasesForFounder(db)]);
   const byDay = new Map(rows.map((r) => [r.day, r]));
 
   return (
@@ -24,9 +26,13 @@ export default async function FounderCurriculumPage() {
       <div className="space-y-8">
         {phases.map((phase) => (
           <section key={phase.id}>
-            <h2 className="text-lg font-semibold mb-3">
-              Phase {phase.number} — {phase.title} — Days {phase.startDay}–{phase.endDay}
-            </h2>
+            <div className="flex flex-wrap items-start justify-between gap-2 mb-1">
+              <h2 className="text-lg font-semibold">
+                Phase {phase.number} — {phase.name} — Days {phase.startDay}–{phase.endDay}
+              </h2>
+              <PhaseEditForm phase={phase} />
+            </div>
+            <p className="text-sm text-muted mb-3">{phase.description}</p>
             <div className="card p-0 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[720px]">
@@ -77,6 +83,7 @@ export default async function FounderCurriculumPage() {
                                   id={row.id}
                                   status={row.status as ContentStatus}
                                   setStatus={setLessonStatusAction}
+                                  editHref={`/founder/lessons/${row.id}`}
                                 />
                               </div>
                             ) : (

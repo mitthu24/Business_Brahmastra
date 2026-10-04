@@ -75,7 +75,7 @@ export default async function FounderAchievementsPage({
                   <td className="py-2.5 px-4 text-muted">{a.category}</td>
                   <td className="py-2.5 px-4"><ContentStatusBadge status={a.status} /></td>
                   <td className="py-2.5 px-4">
-                    <ContentStatusActions id={a.id} status={a.status} setStatus={setAchievementStatusAction} />
+                    <ContentStatusActions id={a.id} status={a.status} setStatus={setAchievementStatusAction} editHref={`/founder/achievements/${a.id}`} />
                   </td>
                 </tr>
               ))}

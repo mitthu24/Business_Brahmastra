@@ -27,7 +27,6 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
               <Icon name={item.icon} size={18} />
               {item.label}
             </span>
-            {item.comingSoon && <span className="text-[10px] uppercase tracking-wide text-muted/70">Soon</span>}
           </Link>
         );
       })}

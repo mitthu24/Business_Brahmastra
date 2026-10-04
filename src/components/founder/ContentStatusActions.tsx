@@ -1,16 +1,27 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import type { ContentStatus } from "@/lib/db/content-queries";
 
 type SetStatusFn = (id: string, status: ContentStatus) => Promise<{ ok: boolean; error?: string }>;
 
-/** Shared publish/unpublish/archive/restore controls for the glossary, formula, and case-study
- * CMS (Phase 5.3 slice 2) - the three content types have identical status-transition UI, so this
- * is the one place that logic lives rather than copy-pasted three times. `setStatus` is the
- * type-specific server action (setGlossaryStatusAction / setFormulaStatusAction /
- * setCaseStudyStatusAction), passed in as a prop from the server-rendered page. */
-export function ContentStatusActions({ id, status, setStatus }: { id: string; status: ContentStatus; setStatus: SetStatusFn }) {
+/** Shared edit/publish/unpublish/archive/restore controls for every list-page CMS table in the
+ * Founder Control Center - every content type has identical status-transition UI, so this is the
+ * one place that logic lives rather than copy-pasted. `setStatus` is the type-specific server
+ * action. `editHref`, when passed, renders an explicit "Edit" link first - list pages pass it so
+ * editing is never only discoverable by clicking the row title. */
+export function ContentStatusActions({
+  id,
+  status,
+  setStatus,
+  editHref,
+}: {
+  id: string;
+  status: ContentStatus;
+  setStatus: SetStatusFn;
+  editHref?: string;
+}) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -25,6 +36,14 @@ export function ContentStatusActions({ id, status, setStatus }: { id: string; st
   return (
     <div className="flex flex-col gap-1 items-start">
       <div className="flex flex-wrap gap-1.5">
+        {editHref && (
+          <Link
+            href={editHref}
+            className="rounded-md border border-border px-2 py-1 text-xs font-medium hover:bg-bg-elevated transition-colors"
+          >
+            Edit
+          </Link>
+        )}
         {status !== "published" && (
           <button
             type="button"
