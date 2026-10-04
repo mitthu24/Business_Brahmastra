@@ -52,17 +52,18 @@ export function LiveCalculator({
   return (
     <div className="space-y-6">
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="space-y-4">
+        <div className="space-y-5">
           {fields.map((f) => (
             <div key={f.id}>
-              <label htmlFor={f.id} className="text-sm font-medium block mb-1">
+              <label htmlFor={f.id} className="text-sm font-medium block mb-1.5">
                 {f.label}
               </label>
-              <div className="flex items-center rounded-lg border border-border bg-bg-elevated overflow-hidden focus-within:border-primary">
-                {f.prefix && <span className="px-3 text-muted text-sm">{f.prefix}</span>}
+              <div className="flex items-center rounded-xl border border-border bg-bg-elevated overflow-hidden focus-within:border-primary">
+                {f.prefix && <span className="px-3.5 text-muted text-base">{f.prefix}</span>}
                 <input
                   id={f.id}
                   type="number"
+                  inputMode="decimal"
                   step={f.step ?? "any"}
                   min={f.min}
                   max={f.max}
@@ -71,9 +72,9 @@ export function LiveCalculator({
                     const raw = e.target.value === "" ? 0 : Number(e.target.value);
                     setValues((prev) => ({ ...prev, [f.id]: clamp(raw, f.min, f.max) }));
                   }}
-                  className="w-full bg-transparent px-3 py-2.5 text-sm outline-none"
+                  className="w-full bg-transparent px-3.5 py-3.5 text-base outline-none"
                 />
-                {f.suffix && <span className="px-3 text-muted text-sm">{f.suffix}</span>}
+                {f.suffix && <span className="px-3.5 text-muted text-base">{f.suffix}</span>}
               </div>
             </div>
           ))}

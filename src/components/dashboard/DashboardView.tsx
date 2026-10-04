@@ -7,6 +7,7 @@ import { TOTAL_DAYS, getLessonByDay } from "@/lib/content/lessons";
 import { achievements } from "@/lib/progress/achievements";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { CircularProgress } from "@/components/ui/CircularProgress";
 import { TrialBanner } from "@/components/access/TrialBanner";
 import { hasProtectedAccess, type AccessInfo } from "@/lib/access/status";
 
@@ -49,26 +50,33 @@ export function DashboardView({
 
       {access && <TrialBanner access={access} />}
 
-      <div className="card p-6 mb-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:justify-between">
-        <div>
-          <div className="text-xs text-muted mb-1">Current Day</div>
-          <div className="text-2xl font-bold">Day {currentDay}{currentLesson ? `: ${currentLesson.title}` : ""}</div>
-          <div className="text-sm text-muted mt-1">Phase: {currentPhase.title}</div>
+      {/* TODAY'S MISSION - the one dominant CTA on this page */}
+      <div className="card p-6 mb-6 bg-gradient-to-br from-primary/10 via-bg-card to-bg-card border-primary/20">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-5 sm:justify-between">
+          <div className="flex items-center gap-5">
+            <CircularProgress percent={progressPercent} size={76} sublabel="journey" />
+            <div>
+              <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Today&apos;s Mission</p>
+              <div className="text-2xl font-bold">Day {currentDay}{currentLesson ? `: ${currentLesson.title}` : ""}</div>
+              <div className="text-sm text-muted mt-1">Phase: {currentPhase.title}</div>
+            </div>
+          </div>
+          {canLearn ? (
+            <Link
+              href={`/learn/day/${currentDay}`}
+              className="rounded-lg bg-primary text-primary-foreground px-6 py-3 font-medium hover:opacity-90 transition-opacity whitespace-nowrap text-center shrink-0"
+            >
+              Continue Learning →
+            </Link>
+          ) : (
+            <Link
+              href="/account"
+              className="rounded-lg border border-border px-6 py-3 font-medium hover:bg-bg-elevated transition-colors whitespace-nowrap text-center shrink-0"
+            >
+              View access status
+            </Link>
+          )}
         </div>
-        {canLearn ? (
-          <Link href={`/learn/day/${currentDay}`} className="rounded-lg bg-primary text-primary-foreground px-5 py-2.5 font-medium hover:opacity-90 transition-opacity whitespace-nowrap">
-            Continue Learning →
-          </Link>
-        ) : (
-          <Link href="/account" className="rounded-lg border border-border px-5 py-2.5 font-medium hover:bg-bg-elevated transition-colors whitespace-nowrap">
-            View access status
-          </Link>
-        )}
-      </div>
-
-      <div className="mb-6">
-        <p className="text-xs text-muted mb-1.5">90-DAY PROGRESS</p>
-        <ProgressBar percent={progressPercent} label={`${completedCount}/${TOTAL_DAYS} days complete · ${progressPercent}%`} />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">

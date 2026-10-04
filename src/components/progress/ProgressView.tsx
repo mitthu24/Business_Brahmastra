@@ -3,22 +3,40 @@
 import { phases } from "@/lib/content/phases";
 import { useProgressStore } from "@/lib/progress/store";
 import { TOTAL_DAYS } from "@/lib/content/lessons";
+import { achievements } from "@/lib/progress/achievements";
+import { MetricCard } from "@/components/ui/MetricCard";
+import { CircularProgress } from "@/components/ui/CircularProgress";
 
 export function ProgressView() {
   const completedDays = useProgressStore((s) => s.completedDays);
   const quizAttempts = useProgressStore((s) => s.quizAttempts);
   const completedExercises = useProgressStore((s) => s.completedExercises);
+  const completedCaseStudies = useProgressStore((s) => s.completedCaseStudies);
+  const xp = useProgressStore((s) => s.xp);
+  const streak = useProgressStore((s) => s.streak);
+  const unlockedAchievements = useProgressStore((s) => s.unlockedAchievements);
   const completedSet = new Set(completedDays);
 
   const quizValues = Object.values(quizAttempts).map((a) => a.accuracyPercent);
   const avgAccuracy = quizValues.length === 0 ? null : Math.round(quizValues.reduce((a, b) => a + b, 0) / quizValues.length);
+  const overallPercent = Math.round((completedDays.length / TOTAL_DAYS) * 100);
 
   return (
     <div>
+      <div className="card p-6 mb-8 flex flex-col sm:flex-row items-center gap-6">
+        <CircularProgress percent={overallPercent} size={96} sublabel="complete" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 flex-1 w-full">
+          <MetricCard icon="Flame" label="Current Streak" value={`${streak.currentStreak} days`} />
+          <MetricCard icon="Zap" label="Total XP" value={xp.toLocaleString()} />
+          <MetricCard icon="ClipboardCheck" label="Exercises Completed" value={`${completedExercises.length}`} />
+          <MetricCard icon="Trophy" label="Achievements" value={`${unlockedAchievements.length}/${achievements.length}`} />
+        </div>
+      </div>
+
       <div className="grid sm:grid-cols-3 gap-4 mb-8">
-        <StatBlock label="Overall Completion" value={`${Math.round((completedDays.length / TOTAL_DAYS) * 100)}%`} />
-        <StatBlock label="Exercises Completed" value={`${completedExercises.length}`} />
-        <StatBlock label="Average Quiz Accuracy" value={avgAccuracy === null ? "—" : `${avgAccuracy}%`} />
+        <MetricCard icon="BookOpen" label="Days Completed" value={`${completedDays.length}/${TOTAL_DAYS}`} />
+        <MetricCard icon="HelpCircle" label="Average Quiz Accuracy" value={avgAccuracy === null ? "—" : `${avgAccuracy}%`} />
+        <MetricCard icon="Building2" label="Case Studies Completed" value={`${completedCaseStudies.length}`} />
       </div>
 
       <h2 className="text-lg font-semibold mb-4">Progress by Phase</h2>
@@ -34,21 +52,12 @@ export function ProgressView() {
                 <span className="text-xs text-muted">{completedInPhase}/{totalDays}</span>
               </div>
               <div className="h-2 rounded-full bg-bg-elevated overflow-hidden">
-                <div className="h-full bg-primary rounded-full" style={{ width: `${percent}%` }} />
+                <div className="h-full bg-primary rounded-full transition-[width] duration-500" style={{ width: `${percent}%` }} />
               </div>
             </div>
           );
         })}
       </div>
-    </div>
-  );
-}
-
-function StatBlock({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="card p-5">
-      <div className="text-2xl font-bold text-primary">{value}</div>
-      <div className="text-xs text-muted mt-1">{label}</div>
     </div>
   );
 }

@@ -15,6 +15,7 @@ import { BusinessExampleCard } from "@/components/ui/BusinessExampleCard";
 import { Callout } from "@/components/ui/Callout";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { getLessonDiagram } from "@/lib/lesson-diagrams";
+import { LessonScrollProgress } from "@/components/lesson/LessonScrollProgress";
 
 export function generateStaticParams() {
   return allLessons.map((l) => ({ day: String(l.day) }));
@@ -60,8 +61,16 @@ export default async function LessonPage({ params }: { params: Promise<{ day: st
   const phase = getPhaseForDay(lesson.day);
   const diagram = getLessonDiagram(lesson.day);
 
+  // Fixed, always-present sections (mission/concept/analogy/examples/mistake/exercise-or-not/
+  // case study/founder question/remember this/reflection) plus the optional diagram/formula/
+  // mnemonic/quiz ones - counted here only to drive the mobile scroll-progress indicator below,
+  // never anything that affects completion or XP.
+  const sectionCount =
+    9 + (diagram ? 1 : 0) + (lesson.formula ? 1 : 0) + (lesson.mnemonic ? 1 : 0) + (quizVisible && lesson.quiz.length > 0 ? 1 : 0);
+
   return (
     <article className="space-y-8 max-w-3xl">
+      <LessonScrollProgress sectionCount={sectionCount} />
       <header>
         <div className="flex items-center gap-2 text-sm text-muted mb-2">
           <span>Phase {phase.number}: {phase.title}</span>

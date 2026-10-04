@@ -20,6 +20,7 @@ export function GlobalSearch() {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
   const index = useMemo(() => buildSearchIndex(), []);
   const results = useMemo(() => searchIndex(query, index), [query, index]);
@@ -50,17 +51,30 @@ export function GlobalSearch() {
         e.preventDefault();
         setOpen(true);
       }
-      if (e.key === "Escape") {
-        setOpen(false);
+      if (e.key === "Escape" && open) {
+        closeSearch();
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [open]);
 
   useEffect(() => {
-    if (open) inputRef.current?.focus();
+    if (!open) return;
+    inputRef.current?.focus();
+    // Lock body scroll while the search overlay is open - on a phone, the result list's own
+    // scroll container otherwise lets the page behind it scroll too, which feels broken
+    // (docs/PHASE-5.5.md "Mobile Shell": "scroll locking").
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [open]);
+
+  function closeSearch() {
+    setOpen(false);
+    triggerRef.current?.focus();
+  }
 
   function goTo(href: string) {
     setOpen(false);
@@ -86,6 +100,7 @@ export function GlobalSearch() {
   return (
     <>
       <button
+        ref={triggerRef}
         onClick={() => setOpen(true)}
         className="flex items-center gap-2 rounded-lg border border-border bg-bg-elevated px-3 py-2 text-sm text-muted hover:text-foreground transition-colors w-full md:w-64"
         aria-label="Open global search"
@@ -98,7 +113,7 @@ export function GlobalSearch() {
       {open && (
         <div
           className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-[10vh]"
-          onClick={() => setOpen(false)}
+          onClick={closeSearch}
           role="dialog"
           aria-modal="true"
           aria-label="Global search"
@@ -118,7 +133,7 @@ export function GlobalSearch() {
                 aria-controls="global-search-results"
                 aria-activedescendant={results[activeIndex] ? `search-result-${results[activeIndex].id}` : undefined}
               />
-              <button onClick={() => setOpen(false)} aria-label="Close search">
+              <button onClick={closeSearch} aria-label="Close search">
                 <Icon name="X" size={18} className="text-muted" />
               </button>
             </div>
