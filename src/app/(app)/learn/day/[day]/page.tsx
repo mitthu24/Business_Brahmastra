@@ -5,7 +5,7 @@ import { hasProtectedAccess } from "@/lib/access/status";
 import { AccessExpiredNotice } from "@/components/access/AccessExpiredNotice";
 import { allLessons, getLessonByDay, TOTAL_DAYS } from "@/lib/content/lessons";
 import { getPhaseForDay } from "@/lib/content/phases";
-import { getPublishedLessonByDayForLearner, getLessonSectionVisibility } from "@/lib/db/lesson-queries";
+import { getPublishedLessonWithVisibility } from "@/lib/db/lesson-queries";
 import { getDb } from "@/lib/db/client";
 import { LessonInteractive } from "@/components/lesson/LessonInteractive";
 import { LessonSection } from "@/components/ui/LessonSection";
@@ -42,14 +42,19 @@ export default async function LessonPage({ params }: { params: Promise<{ day: st
   const dayNum = Number(day);
   if (!Number.isInteger(dayNum) || dayNum < 1 || dayNum > TOTAL_DAYS) notFound();
   const db = getDb();
-  const lesson = await getPublishedLessonByDayForLearner(db, dayNum);
+  // Phase 5.5.1 performance fix: these two calls are independent of each other (one reads the
+  // lesson row, the other re-verifies live access status) - they used to run sequentially one
+  // after another; Promise.all lets them resolve concurrently instead. Neither depends on the
+  // other's result, and a redirect thrown by requireLearnerOrRedirect propagates through
+  // Promise.all exactly as it would if awaited alone, so the access-check security boundary
+  // (docs/PHASE-5.md "Lesson access": authentication is enforced by the (app) layout, but lesson
+  // *content* additionally requires live access status, never just a frontend route guard) is
+  // unchanged.
+  const [{ lesson, exerciseVisible, quizVisible }, { status }] = await Promise.all([
+    getPublishedLessonWithVisibility(db, dayNum),
+    requireLearnerOrRedirect(),
+  ]);
   if (!lesson) notFound();
-  const { exerciseVisible, quizVisible } = await getLessonSectionVisibility(db, dayNum);
-
-  // Server-side lesson access check (docs/PHASE-5.md "Lesson access"): authentication is already
-  // enforced by the (app) layout, but lesson *content* additionally requires live access status -
-  // never just a frontend route guard.
-  const { status } = await requireLearnerOrRedirect();
   if (!hasProtectedAccess(status)) {
     return (
       <div className="max-w-3xl">

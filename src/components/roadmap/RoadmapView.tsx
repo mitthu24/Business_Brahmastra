@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { phases } from "@/lib/content/phases";
 import { useProgressStore } from "@/lib/progress/store";
 import { PhaseCard } from "@/components/ui/PhaseCard";
@@ -9,29 +9,34 @@ import { Icon } from "@/components/nav/Icon";
 /** Phase state derivation (unlocked/complete/current) is shared verbatim between the desktop
  * horizontal timeline and the mobile vertical one below - this is presentation-only, the
  * progression logic itself (what counts as unlocked) is untouched from before the Phase 5.5
- * redesign. */
+ * redesign. Phase 5.5.1 performance fix: wrapped in useMemo keyed on completedDays, since this
+ * recomputed all 15 phases' derived state (nested Array.from loops) on every render before,
+ * including re-renders caused only by the click-to-select `activeIdx` state below, which has
+ * nothing to do with progress data. */
 function usePhaseStates() {
   const completedDays = useProgressStore((s) => s.completedDays);
-  const completedSet = new Set(completedDays);
 
-  return phases.map((phase, idx) => {
-    const totalDays = phase.endDay - phase.startDay + 1;
-    const completedInPhase = Array.from({ length: totalDays }, (_, i) => phase.startDay + i).filter((d) =>
-      completedSet.has(d)
-    ).length;
-    const previousPhase = phases[idx - 1];
-    const previousComplete = !previousPhase
-      ? true
-      : Array.from({ length: previousPhase.endDay - previousPhase.startDay + 1 }, (_, i) => previousPhase.startDay + i).every(
-          (d) => completedSet.has(d)
-        );
-    const unlocked = idx === 0 || previousComplete || completedInPhase > 0;
-    const isComplete = completedInPhase === totalDays;
-    const isCurrent = unlocked && !isComplete;
-    const nextDay = completedInPhase < totalDays ? phase.startDay + completedInPhase : phase.startDay;
+  return useMemo(() => {
+    const completedSet = new Set(completedDays);
+    return phases.map((phase, idx) => {
+      const totalDays = phase.endDay - phase.startDay + 1;
+      const completedInPhase = Array.from({ length: totalDays }, (_, i) => phase.startDay + i).filter((d) =>
+        completedSet.has(d)
+      ).length;
+      const previousPhase = phases[idx - 1];
+      const previousComplete = !previousPhase
+        ? true
+        : Array.from({ length: previousPhase.endDay - previousPhase.startDay + 1 }, (_, i) => previousPhase.startDay + i).every(
+            (d) => completedSet.has(d)
+          );
+      const unlocked = idx === 0 || previousComplete || completedInPhase > 0;
+      const isComplete = completedInPhase === totalDays;
+      const isCurrent = unlocked && !isComplete;
+      const nextDay = completedInPhase < totalDays ? phase.startDay + completedInPhase : phase.startDay;
 
-    return { phase, totalDays, completedInPhase, unlocked, isComplete, isCurrent, nextDay };
-  });
+      return { phase, totalDays, completedInPhase, unlocked, isComplete, isCurrent, nextDay };
+    });
+  }, [completedDays]);
 }
 
 export function RoadmapView() {

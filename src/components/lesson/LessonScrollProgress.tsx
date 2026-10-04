@@ -7,15 +7,27 @@ import { useEffect, useState } from "react";
  * header answers "how far through the course", not "how far through THIS lesson" - this answers
  * the second question, specifically for the small screen where scrolling to re-check your place
  * is most annoying. Pure presentation: tracks scroll position within the lesson <article>,
- * touches no completion/XP/streak state. */
+ * touches no completion/XP/streak state.
+ *
+ * Phase 5.5.1 performance fix: this previously ran its scroll handler (and a setState per event)
+ * on every device, including desktop, even though the element it drives is `lg:hidden` and
+ * therefore invisible there - pure wasted re-renders on every scroll while reading a lesson on a
+ * wide screen. It now (a) skips attaching the listener at all above the `lg` breakpoint, matching
+ * the CSS that hides the element, and (b) throttles updates to one per animation frame instead of
+ * one per scroll event, which on a fast trackpad/touch flick can fire dozens of times a frame. */
 export function LessonScrollProgress({ sectionCount }: { sectionCount: number }) {
   const [percent, setPercent] = useState(0);
 
   useEffect(() => {
+    if (window.matchMedia("(min-width: 1024px)").matches) return;
+
     const article = document.querySelector("article");
     if (!article) return;
 
-    function onScroll() {
+    let ticking = false;
+
+    function measure() {
+      ticking = false;
       const rect = article!.getBoundingClientRect();
       const total = rect.height - window.innerHeight;
       if (total <= 0) {
@@ -26,7 +38,13 @@ export function LessonScrollProgress({ sectionCount }: { sectionCount: number })
       setPercent(Math.round((scrolled / total) * 100));
     }
 
-    onScroll();
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(measure);
+    }
+
+    measure();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);

@@ -8,6 +8,7 @@ import {
   getLessonByDayNumber,
   getLessonSectionVisibility,
   getPublishedLessonByDayForLearner,
+  getPublishedLessonWithVisibility,
   updateLessonExercise,
   setExerciseStatus,
   updateLessonQuiz,
@@ -89,6 +90,42 @@ describe("exercise section visibility, independent of the lesson's own status", 
     const visibility = await getLessonSectionVisibility(db, 1);
     expect(visibility.exerciseVisible).toBe(true);
     expect(visibility.quizVisible).toBe(false);
+  });
+
+  // Phase 5.5.1 performance fix: getPublishedLessonWithVisibility fetches the lesson row once and
+  // derives both the lesson and its section visibility from it, instead of the lesson page calling
+  // getPublishedLessonByDayForLearner and getLessonSectionVisibility separately (two identical
+  // SELECTs on the same row). These tests confirm it agrees with calling the two separately, in
+  // every case the suite above already covers individually: a migrated row with one section
+  // unpublished, and a day with no CMS row yet.
+  it("getPublishedLessonWithVisibility agrees with calling the two separate functions, for a migrated lesson with one section unpublished", async () => {
+    await seedContentFromHardcoded(db);
+    const day1 = await getLessonByDayNumber(db, 1);
+    await setExerciseStatus(db, day1!.id, "draft", founderId);
+
+    const [lesson, visibility] = await Promise.all([
+      getPublishedLessonByDayForLearner(db, 1),
+      getLessonSectionVisibility(db, 1),
+    ]);
+    const combined = await getPublishedLessonWithVisibility(db, 1);
+
+    expect(combined.lesson).toEqual(lesson);
+    expect(combined.exerciseVisible).toBe(visibility.exerciseVisible);
+    expect(combined.quizVisible).toBe(visibility.quizVisible);
+    expect(combined.exerciseVisible).toBe(false);
+  });
+
+  it("getPublishedLessonWithVisibility agrees with calling the two separate functions, for a day with no CMS row yet", async () => {
+    const [lesson, visibility] = await Promise.all([
+      getPublishedLessonByDayForLearner(db, 1),
+      getLessonSectionVisibility(db, 1),
+    ]);
+    const combined = await getPublishedLessonWithVisibility(db, 1);
+
+    expect(combined.lesson).toEqual(lesson);
+    expect(combined.exerciseVisible).toBe(visibility.exerciseVisible);
+    expect(combined.quizVisible).toBe(visibility.quizVisible);
+    expect(combined.exerciseVisible).toBe(true); // defaults visible until migrated
   });
 
   it("editing exercise content takes effect immediately for the learner", async () => {

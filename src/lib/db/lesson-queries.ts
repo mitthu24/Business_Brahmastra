@@ -164,12 +164,23 @@ export async function getLessonByDayNumber(db: Database, day: number): Promise<L
  * and verified, every call resolves from the DB; the hardcoded module stops being consulted in
  * practice without being deleted, exactly as instructed.
  */
+/** Pure derivations from an already-fetched row (or null, meaning "not migrated yet") - shared by
+ * the single-purpose functions below AND by getPublishedLessonWithVisibility, which fetches the
+ * row ONCE and derives both results from it (see that function's own comment for why this split
+ * exists - it fixes a real duplicate-query bug found during the Phase 5.5.1 performance pass). */
+function derivePublishedLesson(row: LessonRow | null, day: number): Lesson | null {
+  if (row) return row.status === "published" ? toLesson(row) : null;
+  return getHardcodedLessonByDay(day) ?? null;
+}
+
+function deriveSectionVisibility(row: LessonRow | null): { exerciseVisible: boolean; quizVisible: boolean } {
+  if (!row) return { exerciseVisible: true, quizVisible: true };
+  return { exerciseVisible: row.exerciseStatus === "published", quizVisible: row.quizStatus === "published" };
+}
+
 export async function getPublishedLessonByDayForLearner(db: Database, day: number): Promise<Lesson | null> {
   const row = await getLessonByDayNumber(db, day);
-  if (row) {
-    return row.status === "published" ? toLesson(row) : null;
-  }
-  return getHardcodedLessonByDay(day) ?? null;
+  return derivePublishedLesson(row, day);
 }
 
 /**
@@ -183,8 +194,24 @@ export async function getLessonSectionVisibility(
   day: number
 ): Promise<{ exerciseVisible: boolean; quizVisible: boolean }> {
   const row = await getLessonByDayNumber(db, day);
-  if (!row) return { exerciseVisible: true, quizVisible: true };
-  return { exerciseVisible: row.exerciseStatus === "published", quizVisible: row.quizStatus === "published" };
+  return deriveSectionVisibility(row);
+}
+
+/**
+ * Phase 5.5.1 performance fix: the lesson page previously called getPublishedLessonByDayForLearner
+ * and getLessonSectionVisibility separately, each independently calling getLessonByDayNumber - two
+ * identical SELECTs on the exact same row, on every single lesson page load. This fetches the row
+ * ONCE and derives both results from it, with identical behavior to calling the two functions
+ * above separately (same published-status/fallback/visibility rules, just one query instead of
+ * two). The two single-purpose functions above are kept as-is (same signatures, same tests) for
+ * every other caller that only needs one of the two results.
+ */
+export async function getPublishedLessonWithVisibility(
+  db: Database,
+  day: number
+): Promise<{ lesson: Lesson | null; exerciseVisible: boolean; quizVisible: boolean }> {
+  const row = await getLessonByDayNumber(db, day);
+  return { lesson: derivePublishedLesson(row, day), ...deriveSectionVisibility(row) };
 }
 
 export async function updateLessonExercise(
