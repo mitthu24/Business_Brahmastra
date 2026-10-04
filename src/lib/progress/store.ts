@@ -55,7 +55,26 @@ interface ProgressState {
 
   hydrateFromServer: (snapshot: ServerProgressSnapshot) => void;
   retrySync: () => void;
+  resetLocalProgress: () => void;
 }
+
+/** The store's own initial values, factored out so resetLocalProgress (below) can restore them
+ * exactly - including `hydrated: false`, which is what tells ProgressBootstrap a fresh fetch is
+ * needed again. Deliberately excludes the action functions - callers get those from the existing
+ * store instance, this only ever resets data fields. */
+const initialProgressData = {
+  completedDays: [] as number[],
+  completedExercises: [] as string[],
+  completedCaseStudies: [] as string[],
+  quizAttempts: {} as Record<string, QuizAttemptRecord>,
+  xp: 0,
+  streak: { currentStreak: 0, lastActiveDate: null } as StreakState,
+  unlockedAchievements: [] as string[],
+  finalProjectCompleted: false,
+  reflections: {} as Record<string, { learned: string; application: string }>,
+  syncStatus: "idle" as SyncStatus,
+  hydrated: false,
+};
 
 function dayToLessonId(day: number): string {
   return `day-${day}`;
@@ -110,17 +129,7 @@ async function syncToServer(
 export const useProgressStore = create<ProgressState>()(
   persist(
     (set, get) => ({
-      completedDays: [],
-      completedExercises: [],
-      completedCaseStudies: [],
-      quizAttempts: {},
-      xp: 0,
-      streak: { currentStreak: 0, lastActiveDate: null },
-      unlockedAchievements: [],
-      finalProjectCompleted: false,
-      reflections: {},
-      syncStatus: "idle",
-      hydrated: false,
+      ...initialProgressData,
 
       completeDay: (day: number) => {
         const state = get();
@@ -212,6 +221,13 @@ export const useProgressStore = create<ProgressState>()(
             set({ syncStatus: typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "error" });
           });
       },
+
+      /** Called on logout (see LogoutButton.tsx) - clears every field back to its initial value,
+       * including `hydrated: false`, and the overwrite is persisted to localStorage exactly like
+       * any other `set()` call here. Without this, the next user to log in on the same browser
+       * tab (no hard reload) would see whichever user logged out's progress still sitting in the
+       * store - a real cross-user data leak this action exists specifically to prevent. */
+      resetLocalProgress: () => set({ ...initialProgressData }),
     }),
     { name: "business-school-progress" }
   )

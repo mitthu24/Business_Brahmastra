@@ -37,7 +37,21 @@ function buildLocalSnapshot() {
 // remounts) already held perfectly valid, already-hydrated data. A plain module-level flag is a
 // real per-browser-session guard (reset only by an actual full page load/new tab, matching what
 // this component's own "runs once per browser" contract always claimed), not a per-mount one.
+//
+// SAFETY (Phase 5.5.2 follow-up, after review): this flag surviving remounts is exactly what
+// makes it safe to skip redundant refetches for the SAME user - but it would just as happily skip
+// the fetch for a DIFFERENT user who logs in afterward in the same browser tab (no hard reload),
+// since nothing about this module knows a user changed. That is not this flag's job to know -
+// resetBootstrapGuard() below exists so the one place that DOES know (logout) can reset it
+// explicitly. See LogoutButton.tsx, which calls this alongside
+// useProgressStore.getState().resetLocalProgress() before the server logout action runs, and
+// src/lib/progress/store.test.ts / src/components/sync/ProgressBootstrap.test.ts for the
+// regression coverage.
 let hasBootstrappedThisSession = false;
+
+export function resetBootstrapGuard() {
+  hasBootstrappedThisSession = false;
+}
 
 /** Runs once per browser, right after the protected app shell mounts (i.e. right after
  * signup/login): migrates any pre-existing localStorage progress to the cloud exactly once
