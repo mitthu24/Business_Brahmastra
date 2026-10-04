@@ -1,18 +1,31 @@
 // No "server-only" guard here (unlike content-queries.ts): this module is also imported by
 // scripts/seed-content.ts, a plain tsx/node operator script run outside Next's bundler, where the
 // server-only package's import-time check throws. It is never imported by a client component.
+import { eq, and } from "drizzle-orm";
 import type { Database } from "./types";
-import { glossaryEntries, formulaEntries, caseStudyEntries, lessons as lessonsTable } from "./schema";
+import {
+  glossaryEntries,
+  formulaEntries,
+  caseStudyEntries,
+  lessons as lessonsTable,
+  achievementEntries,
+  calculatorEntries,
+} from "./schema";
 import { glossary } from "@/lib/content/glossary";
 import { formulas } from "@/lib/content/formulas";
 import { caseStudies } from "@/lib/content/case-studies";
 import { allLessons } from "@/lib/content/lessons";
+import { achievements as trustedAchievements } from "@/lib/progress/achievements";
+import { calculatorMeta } from "@/lib/calculator-meta";
 
 export interface ContentSeedResult {
   glossaryInserted: number;
   formulasInserted: number;
   caseStudiesInserted: number;
   lessonsInserted: number;
+  achievementsInserted: number;
+  calculatorsInserted: number;
+  lessonSectionsBackfilled: number;
 }
 
 /**
@@ -110,16 +123,59 @@ export async function seedContentFromHardcoded(db: Database): Promise<ContentSee
         takeaways: JSON.stringify(l.takeaways),
         rememberThis: l.rememberThis,
         status: "published" as const,
+        exerciseStatus: "published" as const,
+        quizStatus: "published" as const,
         publishedAt: new Date(),
       }))
     )
     .onConflictDoNothing({ target: lessonsTable.id })
     .returning({ id: lessonsTable.id });
 
+  // Lessons inserted by slice 3 (before exercise_status/quiz_status existed) got the column
+  // default of 'draft' when the migration added them - backfill those to 'published' so an
+  // already-live exercise/quiz is never silently hidden by a column that didn't exist when the
+  // row was created. Idempotent: the WHERE clause only ever matches rows still at the default.
+  const backfilled = await db
+    .update(lessonsTable)
+    .set({ exerciseStatus: "published", quizStatus: "published" })
+    .where(and(eq(lessonsTable.status, "published"), eq(lessonsTable.exerciseStatus, "draft")))
+    .returning({ id: lessonsTable.id });
+
+  const achievementsResult = await db
+    .insert(achievementEntries)
+    .values(
+      trustedAchievements.map((a) => ({
+        id: a.id,
+        name: a.title,
+        description: a.description,
+        icon: a.icon,
+        status: "published" as const,
+      }))
+    )
+    .onConflictDoNothing({ target: achievementEntries.id })
+    .returning({ id: achievementEntries.id });
+
+  const calculatorsResult = await db
+    .insert(calculatorEntries)
+    .values(
+      calculatorMeta.map((m, i) => ({
+        id: m.slug,
+        title: m.title,
+        description: m.description,
+        ordering: i,
+        status: "published" as const,
+      }))
+    )
+    .onConflictDoNothing({ target: calculatorEntries.id })
+    .returning({ id: calculatorEntries.id });
+
   return {
     glossaryInserted: glossaryResult.length,
     formulasInserted: formulasResult.length,
     caseStudiesInserted: caseStudiesResult.length,
     lessonsInserted: lessonsResult.length,
+    achievementsInserted: achievementsResult.length,
+    calculatorsInserted: calculatorsResult.length,
+    lessonSectionsBackfilled: backfilled.length,
   };
 }

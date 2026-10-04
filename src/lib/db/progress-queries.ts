@@ -14,6 +14,7 @@ import {
 import { xpForEvent, scoreQuiz, type QuizAnswer, type QuizResult } from "@/lib/progress/xp";
 import { updateStreak, type StreakState } from "@/lib/progress/streak";
 import { computeUnlockedAchievements } from "@/lib/progress/achievements";
+import { getQuizForDay } from "./lesson-queries";
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -151,15 +152,29 @@ export async function completeCaseStudyTx(db: Database, userId: string, day: num
   });
 }
 
-/** Mirrors the original store's submitQuiz: scoring always happens and is returned, but XP is
- * only ever awarded for the first attempt at a given lesson day (unique(userId, day) + a check). */
+/**
+ * Mirrors the original store's submitQuiz: scoring always happens and is returned, but XP is only
+ * ever awarded for the first attempt at a given lesson day (unique(userId, day) + a check).
+ *
+ * Server-authoritative scoring (docs/PHASE-5.3.md "Exercise/Quiz CMS" > "Quiz scoring"): the
+ * client's `correctIndex` on each answer is NEVER trusted - the real correct answer is looked up
+ * here from the server's own quiz data (DB-first, hardcoded fallback) by questionId and substituted
+ * before scoring, so a learner tampering with their POST body cannot inflate their score. A
+ * questionId the server doesn't recognize is scored as incorrect rather than trusting the client.
+ */
 export async function submitQuizTx(
   db: Database,
   userId: string,
   day: number,
   answers: QuizAnswer[]
 ): Promise<{ result: QuizResult; snapshot: ProgressSnapshot }> {
-  const result = scoreQuiz(answers);
+  const trustedQuiz = await getQuizForDay(db, day);
+  const correctIndexByQuestionId = new Map(trustedQuiz.map((q) => [q.id, q.correctIndex]));
+  const verifiedAnswers: QuizAnswer[] = answers.map((a) => ({
+    ...a,
+    correctIndex: correctIndexByQuestionId.get(a.questionId) ?? -1,
+  }));
+  const result = scoreQuiz(verifiedAnswers);
   const snapshot = await db.transaction(async (tx) => {
     const existing = await tx
       .select()

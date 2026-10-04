@@ -17,6 +17,7 @@ import {
 import { isUniqueViolation } from "@/lib/db/errors";
 import { phases } from "@/lib/content/phases";
 import type { ContentStatus } from "@/lib/db/content-queries";
+import { parseQuizJson } from "@/lib/content/quiz-validation";
 import type { QuizQuestion } from "@/lib/content/types";
 
 export type FormState = { error?: string; fieldErrors?: Record<string, string[]>; success?: string } | undefined;
@@ -36,33 +37,6 @@ function splitLines(raw: FormDataEntryValue | null): string[] {
     .split("\n")
     .map((s) => s.trim())
     .filter(Boolean);
-}
-
-const quizQuestionSchema = z.object({
-  id: z.string().trim().min(1).optional(),
-  question: z.string().trim().min(1),
-  options: z.array(z.string().trim().min(1)).min(2),
-  correctIndex: z.number().int().min(0),
-  explanation: z.string().trim().min(1),
-});
-
-function parseQuizJson(raw: FormDataEntryValue | null, day: number): { ok: true; value: QuizQuestion[] } | { ok: false; error: string } {
-  const text = typeof raw === "string" ? raw.trim() : "";
-  if (!text) return { ok: true, value: [] };
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    return { ok: false, error: "Quiz must be valid JSON - an array of {question, options, correctIndex, explanation}." };
-  }
-  const result = z.array(quizQuestionSchema).safeParse(parsed);
-  if (!result.success) {
-    return { ok: false, error: "Quiz JSON doesn't match the expected shape: " + result.error.issues[0]?.message };
-  }
-  return {
-    ok: true,
-    value: result.data.map((q, i) => ({ ...q, id: q.id ?? `d${day}q${i + 1}`, correctIndex: q.correctIndex })),
-  };
 }
 
 const lessonFieldsSchema = z.object({
@@ -158,7 +132,7 @@ export async function createLessonAction(_prev: FormState, formData: FormData): 
     return { fieldErrors: { phaseId: ["Unknown phase."] } };
   }
 
-  const quizResult = parseQuizJson(formData.get("quiz"), parsed.data.day);
+  const quizResult = parseQuizJson(formData.get("quiz"), `d${parsed.data.day}`);
   if (!quizResult.ok) return { fieldErrors: { quiz: [quizResult.error] } };
 
   const db = getDb();
@@ -204,7 +178,7 @@ export async function updateLessonAction(id: string, _prev: FormState, formData:
     return { fieldErrors: { phaseId: ["Unknown phase."] } };
   }
 
-  const quizResult = parseQuizJson(formData.get("quiz"), existing.day);
+  const quizResult = parseQuizJson(formData.get("quiz"), `d${existing.day}`);
   if (!quizResult.ok) return { fieldErrors: { quiz: [quizResult.error] } };
 
   const input = buildLessonInput({ ...parsed.data, day: existing.day, slug: existing.slug }, formData, quizResult.value);

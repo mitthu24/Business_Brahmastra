@@ -12,7 +12,15 @@ import { ExerciseCard } from "@/components/ui/ExerciseCard";
 import { CaseStudyCard } from "@/components/ui/CaseStudyCard";
 import { Callout } from "@/components/ui/Callout";
 
-export function LessonInteractive({ lesson }: { lesson: Lesson }) {
+export function LessonInteractive({
+  lesson,
+  exerciseVisible = true,
+  quizVisible = true,
+}: {
+  lesson: Lesson;
+  exerciseVisible?: boolean;
+  quizVisible?: boolean;
+}) {
   const [exerciseRevealed, setExerciseRevealed] = useState(false);
   const [caseStudyRead, setCaseStudyRead] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
@@ -64,9 +72,11 @@ export function LessonInteractive({ lesson }: { lesson: Lesson }) {
 
   return (
     <div className="space-y-8">
-      <LessonSection icon="📝" title="PRACTICE">
-        <ExerciseCard prompt={lesson.exercise.prompt} revealed={exerciseRevealed} answer={lesson.exercise.answer} onReveal={revealExercise} />
-      </LessonSection>
+      {exerciseVisible && (
+        <LessonSection icon="📝" title="PRACTICE">
+          <ExerciseCard prompt={lesson.exercise.prompt} revealed={exerciseRevealed} answer={lesson.exercise.answer} onReveal={revealExercise} />
+        </LessonSection>
+      )}
 
       <LessonSection icon="🏪" title="MINI CASE STUDY">
         <CaseStudyCard text={lesson.caseStudy} read={caseStudyRead} onMarkRead={markCaseStudyRead} />
@@ -76,6 +86,7 @@ export function LessonInteractive({ lesson }: { lesson: Lesson }) {
         <div className="card p-5 italic">{lesson.founderQuestion}</div>
       </LessonSection>
 
+      {quizVisible && lesson.quiz.length > 0 && (
       <LessonSection icon="⚡" title="QUICK QUIZ">
         <div className="card p-5">
           <div className="space-y-5">
@@ -129,6 +140,7 @@ export function LessonInteractive({ lesson }: { lesson: Lesson }) {
           )}
         </div>
       </LessonSection>
+      )}
 
       <LessonSection icon="📌" title="REMEMBER THIS">
         <div className="card p-5">

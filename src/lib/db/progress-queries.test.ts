@@ -66,9 +66,14 @@ describe("completeExerciseTx / completeCaseStudyTx", () => {
 });
 
 describe("submitQuizTx", () => {
+  // Scoring is server-authoritative (docs/PHASE-5.3.md "Exercise/Quiz CMS" > "Quiz scoring"): the
+  // server re-derives the true correctIndex from day 1's real quiz by questionId, so these must be
+  // day 1's actual question ids ("d1q1"/"d1q2", correctIndex 1 for both) for this fixture to mean
+  // anything - any submitted correctIndex is ignored. See exercise-quiz-cms.test.ts for dedicated
+  // tamper-resistance coverage.
   const answers = [
-    { questionId: "q1", selectedIndex: 0, correctIndex: 0 },
-    { questionId: "q2", selectedIndex: 1, correctIndex: 0 },
+    { questionId: "d1q1", selectedIndex: 1, correctIndex: 1 }, // correct
+    { questionId: "d1q2", selectedIndex: 0, correctIndex: 1 }, // wrong
   ];
 
   it("scores the quiz and awards XP only on first attempt", async () => {

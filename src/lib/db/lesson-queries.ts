@@ -83,6 +83,8 @@ export interface LessonRow {
   takeaways: string[];
   rememberThis: string;
   status: ContentStatus;
+  exerciseStatus: ContentStatus;
+  quizStatus: ContentStatus;
   publishedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -170,6 +172,58 @@ export async function getPublishedLessonByDayForLearner(db: Database, day: numbe
   return getHardcodedLessonByDay(day) ?? null;
 }
 
+/**
+ * Whether the exercise and quiz SECTIONS of a day's lesson should render for a learner, checked
+ * independently of the lesson's own publish status (docs/PHASE-5.3.md "Exercise/Quiz CMS"). No CMS
+ * row for this day yet (not migrated) defaults both to visible, matching the hardcoded source's
+ * always-on behavior - only once a row exists does its exercise_status/quiz_status column govern.
+ */
+export async function getLessonSectionVisibility(
+  db: Database,
+  day: number
+): Promise<{ exerciseVisible: boolean; quizVisible: boolean }> {
+  const row = await getLessonByDayNumber(db, day);
+  if (!row) return { exerciseVisible: true, quizVisible: true };
+  return { exerciseVisible: row.exerciseStatus === "published", quizVisible: row.quizStatus === "published" };
+}
+
+export async function updateLessonExercise(
+  db: Database,
+  id: string,
+  input: { exercisePrompt: string; exerciseAnswer: string },
+  founderId: string
+): Promise<void> {
+  await db
+    .update(lessons)
+    .set({ exercisePrompt: input.exercisePrompt, exerciseAnswer: input.exerciseAnswer, updatedBy: founderId, updatedAt: new Date() })
+    .where(eq(lessons.id, id));
+}
+
+export async function setExerciseStatus(db: Database, id: string, status: ContentStatus, founderId: string): Promise<void> {
+  await db.update(lessons).set({ exerciseStatus: status, updatedBy: founderId, updatedAt: new Date() }).where(eq(lessons.id, id));
+}
+
+/**
+ * The TRUSTED source of quiz questions for server-side scoring (docs/PHASE-5.3.md "Exercise/Quiz
+ * CMS" > "Quiz scoring"): never derived from anything the client submitted. Looks up the DB row
+ * for this day regardless of quizStatus (a learner already mid-attempt should still get an
+ * authoritative score even in the rare case their quiz was unpublished after they loaded the
+ * page), falling back to the hardcoded lesson only when no CMS row exists yet.
+ */
+export async function getQuizForDay(db: Database, day: number): Promise<QuizQuestion[]> {
+  const row = await getLessonByDayNumber(db, day);
+  if (row) return row.quiz;
+  return getHardcodedLessonByDay(day)?.quiz ?? [];
+}
+
+export async function updateLessonQuiz(db: Database, id: string, quiz: QuizQuestion[], founderId: string): Promise<void> {
+  await db.update(lessons).set({ quiz: JSON.stringify(quiz), updatedBy: founderId, updatedAt: new Date() }).where(eq(lessons.id, id));
+}
+
+export async function setQuizStatus(db: Database, id: string, status: ContentStatus, founderId: string): Promise<void> {
+  await db.update(lessons).set({ quizStatus: status, updatedBy: founderId, updatedAt: new Date() }).where(eq(lessons.id, id));
+}
+
 export interface LessonInput {
   day: number;
   phaseId: string;
@@ -233,6 +287,8 @@ export async function createLesson(
       id,
       ...lessonValues(input),
       status,
+      exerciseStatus: status,
+      quizStatus: status,
       publishedAt: status === "published" ? new Date() : null,
       createdBy: founderId,
       updatedBy: founderId,

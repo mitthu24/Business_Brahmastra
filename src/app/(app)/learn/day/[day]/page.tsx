@@ -5,7 +5,7 @@ import { hasProtectedAccess } from "@/lib/access/status";
 import { AccessExpiredNotice } from "@/components/access/AccessExpiredNotice";
 import { allLessons, getLessonByDay, TOTAL_DAYS } from "@/lib/content/lessons";
 import { getPhaseForDay } from "@/lib/content/phases";
-import { getPublishedLessonByDayForLearner } from "@/lib/db/lesson-queries";
+import { getPublishedLessonByDayForLearner, getLessonSectionVisibility } from "@/lib/db/lesson-queries";
 import { getDb } from "@/lib/db/client";
 import { LessonInteractive } from "@/components/lesson/LessonInteractive";
 import { LessonSection } from "@/components/ui/LessonSection";
@@ -40,8 +40,10 @@ export default async function LessonPage({ params }: { params: Promise<{ day: st
   const { day } = await params;
   const dayNum = Number(day);
   if (!Number.isInteger(dayNum) || dayNum < 1 || dayNum > TOTAL_DAYS) notFound();
-  const lesson = await getPublishedLessonByDayForLearner(getDb(), dayNum);
+  const db = getDb();
+  const lesson = await getPublishedLessonByDayForLearner(db, dayNum);
   if (!lesson) notFound();
+  const { exerciseVisible, quizVisible } = await getLessonSectionVisibility(db, dayNum);
 
   // Server-side lesson access check (docs/PHASE-5.md "Lesson access"): authentication is already
   // enforced by the (app) layout, but lesson *content* additionally requires live access status -
@@ -111,7 +113,7 @@ export default async function LessonPage({ params }: { params: Promise<{ day: st
         <Callout tone="warning">{lesson.commonMistake}</Callout>
       </LessonSection>
 
-      <LessonInteractive lesson={lesson} />
+      <LessonInteractive lesson={lesson} exerciseVisible={exerciseVisible} quizVisible={quizVisible} />
     </article>
   );
 }

@@ -348,6 +348,17 @@ export const lessons = pgTable("lessons", {
   takeaways: text("takeaways").notNull().default("[]"), // JSON-encoded string[]
   rememberThis: text("remember_this").notNull(),
   status: contentStatusEnum("status").notNull().default("draft"),
+  // Phase 5.3 slice 4 (docs/PHASE-5.3.md "Exercise/Quiz CMS"): the exercise and quiz are sub-fields
+  // of the lesson, not separate content types (there is no standalone exercise/quiz table or id
+  // anywhere in this app), so their founder-facing CMS pages are specialized views onto THESE two
+  // columns rather than a duplicate table - that would create a second, divergent source of truth
+  // for content the lesson editor already owns. Independent of the lesson's own `status`, so a
+  // founder can hide just the exercise or just the quiz within an otherwise-published lesson
+  // (checked by the learner read path in lesson-queries.ts). Migrating the 90 existing lessons
+  // backfills both to 'published' (see content-seed.ts) so already-live exercises/quizzes are never
+  // hidden by this column's existence; new lessons default to 'draft' like the lesson itself.
+  exerciseStatus: contentStatusEnum("exercise_status").notNull().default("draft"),
+  quizStatus: contentStatusEnum("quiz_status").notNull().default("draft"),
   publishedAt: timestamp("published_at", { withTimezone: true }),
   createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
   updatedBy: text("updated_by").references(() => users.id, { onDelete: "set null" }),
@@ -359,4 +370,59 @@ export const lessons = pgTable("lessons", {
   index("lessons_phase_id_idx").on(t.phaseId),
   index("lessons_status_idx").on(t.status),
   index("lessons_updated_at_idx").on(t.updatedAt),
+  index("lessons_exercise_status_idx").on(t.exerciseStatus),
+  index("lessons_quiz_status_idx").on(t.quizStatus),
+]);
+
+/**
+ * Achievement CMS (Phase 5.3 slice 4). Metadata-only, by design (docs/PHASE-5.3.md "Achievement
+ * CMS"): unlock REQUIREMENTS stay exactly where they are, as trusted code in
+ * src/lib/progress/achievements.ts#computeUnlockedAchievements - this table never stores or
+ * executes founder-entered logic. `id` is the SAME stable string the trusted engine already uses
+ * ("first-step", "seven-day-founder", ...), not a generated id, and a row can only be created for
+ * an id the engine already knows about (enforced in src/app/founder/achievement-actions.ts) -
+ * never a free-form new id, which would silently never unlock for anyone. `xp` is informational
+ * display copy only; actual XP awarded is still the flat constants in src/lib/progress/xp.ts,
+ * unchanged.
+ */
+export const achievementEntries = pgTable("achievement_entries", {
+  id: text("id").primaryKey(), // the existing trusted achievement id, e.g. "first-step"
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  icon: text("icon").notNull(),
+  category: text("category").notNull().default("Milestone"),
+  xp: integer("xp").notNull().default(0),
+  status: contentStatusEnum("status").notNull().default("draft"),
+  createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+  updatedBy: text("updated_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("achievement_entries_status_idx").on(t.status),
+  index("achievement_entries_category_idx").on(t.category),
+]);
+
+/**
+ * Calculator CMS (Phase 5.3 slice 4). Directory metadata only (docs/PHASE-5.3.md "Calculator
+ * CMS") - the 12 calculation functions (src/lib/calculators.ts) and their React forms stay trusted
+ * application code; nothing founder-entered is ever evaluated. `id` is the existing calculator
+ * slug (e.g. "profit"), matching src/lib/calculator-meta.ts, not a generated id - there is no
+ * "create a new calculator" flow since a new calculator needs real trusted compute code, not data.
+ */
+export const calculatorEntries = pgTable("calculator_entries", {
+  id: text("id").primaryKey(), // the existing calculator slug, e.g. "profit"
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull().default("General"),
+  helpText: text("help_text"),
+  ordering: integer("ordering").notNull().default(0),
+  status: contentStatusEnum("status").notNull().default("draft"),
+  createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+  updatedBy: text("updated_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("calculator_entries_status_idx").on(t.status),
+  index("calculator_entries_category_idx").on(t.category),
+  index("calculator_entries_ordering_idx").on(t.ordering),
 ]);

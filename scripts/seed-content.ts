@@ -28,6 +28,9 @@ async function main() {
     console.log(`Formula rows inserted: ${result.formulasInserted}`);
     console.log(`Case study rows inserted: ${result.caseStudiesInserted}`);
     console.log(`Lesson rows inserted: ${result.lessonsInserted}`);
+    console.log(`Lesson exercise/quiz sections backfilled to published: ${result.lessonSectionsBackfilled}`);
+    console.log(`Achievement rows inserted: ${result.achievementsInserted}`);
+    console.log(`Calculator rows inserted: ${result.calculatorsInserted}`);
   } finally {
     await sql.end();
   }
